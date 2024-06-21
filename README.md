@@ -1,11 +1,9 @@
-# Node Module Template
+# @voxpelli/config-array-find-files
 
-A GitHub template repo for node modules
+A proof of concept of a generic equivalent of ESLint's (`globSearch()`)[https://github.com/eslint/eslint/blob/d2d06f7a70d9b96b125ecf2de8951bea549db4da/lib/eslint/eslint-helpers.js#L217-L382], for use with plain [`ConfigArray`](https://www.npmjs.com/package/@eslint/config-array):s
 
-<!--
-[![npm version](https://img.shields.io/npm/v/@voxpelli/node-module-template.svg?style=flat)](https://www.npmjs.com/package/@voxpelli/node-module-template)
-[![npm downloads](https://img.shields.io/npm/dm/@voxpelli/node-module-template.svg?style=flat)](https://www.npmjs.com/package/@voxpelli/node-module-template)
--->
+[![npm version](https://img.shields.io/npm/v/@voxpelli/config-array-find-files.svg?style=flat)](https://www.npmjs.com/package/@voxpelli/config-array-find-files)
+[![npm downloads](https://img.shields.io/npm/dm/@voxpelli/config-array-find-files.svg?style=flat)](https://www.npmjs.com/package/@voxpelli/config-array-find-files)
 [![neostandard javascript style](https://img.shields.io/badge/code_style-neostandard-7fffff?style=flat&labelColor=ff80ff)](https://github.com/neostandard/neostandard)
 [![Module type: ESM](https://img.shields.io/badge/module%20type-esm-brightgreen)](https://github.com/voxpelli/badges-cjs-esm)
 [![Types in JS](https://img.shields.io/badge/types_in_js-yes-brightgreen)](https://github.com/voxpelli/types-in-js)
@@ -13,29 +11,42 @@ A GitHub template repo for node modules
 
 ## Usage
 
-### Simple
-
 ```javascript
-import { something } from '@voxpelli/node-module-template';
+import { configArrayFindFiles } from '@voxpelli/config-array-find-files';
 
-// Use that something
+const configs = new ConfigArray([
+  { files: ['*.js'] },
+  { files: ['*.md'] },
+]);
+
+await configs.normalize();
+
+const filePaths = await configArrayFindFiles({
+  basePath: path.join(dirname(import.meta.url), '../'),
+  configs,
+});
 ```
 
 ## API
 
-### `something(input, { configParam }) => Promise<output>`
+### configArrayFindFiles()
 
 Takes a value (`input`), does something configured by the config (`configParam`) and returns the processed value asyncly(`output`)
 
-## Used by
+#### Syntax
 
-* [`example`](https://example.com/) – used by this one to do X and Y
+```ts
+configArrayFindFiles(options) => Promise<string[]>
+```
 
-## Similar modules
+#### Options
 
-* [`example`](https://example.com/) – is similar in this way
+* `basePath` - the directory to search
+* `configs` - the config array to use for determining what to ignore
+* `deepFilter` - optional function that indicates whether the directory will be read deep or not
+* `entryFilter` - optional function that indicates whether the entry will be included to results or not
 
-## See also
+#### Returns
 
-* [Announcement blog post](#)
-* [Announcement tweet](#)
+A `Promise` that resolves to an array with `string` file paths for all matching files
+

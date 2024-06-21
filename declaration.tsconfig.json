@@ -1,7 +1,6 @@
 
 {
   "extends": "./tsconfig",
-  "files": [],
   "exclude": [
     "test/**/*.js"
   ],
@@ -9,6 +8,7 @@
     "declaration": true,
     "declarationMap": true,
     "noEmit": false,
-    "emitDeclarationOnly": true
+    "emitDeclarationOnly": true,
+    "removeComments": false
   }
 }

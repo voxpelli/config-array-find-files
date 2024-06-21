@@ -1,6 +1,6 @@
 # @voxpelli/config-array-find-files
 
-A proof of concept of a generic equivalent of ESLint's [`globSearch()`](https://github.com/eslint/eslint/blob/d2d06f7a70d9b96b125ecf2de8951bea549db4da/lib/eslint/eslint-helpers.js#L217-L382), for use with [`ConfigArray`](https://www.npmjs.com/package/@eslint/config-array)
+A proof of concept of a generic equivalent of ESLint's [`globSearch()`](https://github.com/eslint/eslint/blob/d2d06f7a70d9b96b125ecf2de8951bea549db4da/lib/eslint/eslint-helpers.js#L217-L382) for use with [`ConfigArray`](https://www.npmjs.com/package/@eslint/config-array)
 
 <!--[![npm version](https://img.shields.io/npm/v/@voxpelli/config-array-find-files.svg?style=flat)](https://www.npmjs.com/package/@voxpelli/config-array-find-files)
 [![npm downloads](https://img.shields.io/npm/dm/@voxpelli/config-array-find-files.svg?style=flat)](https://www.npmjs.com/package/@voxpelli/config-array-find-files)-->

@@ -12,14 +12,18 @@ A proof of concept of a generic equivalent of ESLint's [`globSearch()`](https://
 ## Usage
 
 ```javascript
+import { ConfigArray } from '@eslint/config-array';
 import { configArrayFindFiles } from '@voxpelli/config-array-find-files';
+
+// Ensure you have a normalized config at hand...
 
 const configs = new ConfigArray([
   { files: ['*.js'] },
   { files: ['*.md'] },
 ]);
-
 await configs.normalize();
+
+// ...then you are ready to find some files!
 
 const filePaths = await configArrayFindFiles({
   basePath: path.join(dirname(import.meta.url), '../'),

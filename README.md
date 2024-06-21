@@ -2,8 +2,8 @@
 
 A proof of concept of a generic equivalent of ESLint's [`globSearch()`](https://github.com/eslint/eslint/blob/d2d06f7a70d9b96b125ecf2de8951bea549db4da/lib/eslint/eslint-helpers.js#L217-L382) for use with [`ConfigArray`](https://www.npmjs.com/package/@eslint/config-array)
 
-[![npm version](https://img.shields.io/npm/v/@voxpelli/config-array-find-files.svg?style=flat)](https://www.npmjs.com/package/@voxpelli/config-array-find-files)
 <!--[![npm downloads](https://img.shields.io/npm/dm/@voxpelli/config-array-find-files.svg?style=flat)](https://www.npmjs.com/package/@voxpelli/config-array-find-files)-->
+[![npm version](https://img.shields.io/npm/v/@voxpelli/config-array-find-files.svg?style=flat)](https://www.npmjs.com/package/@voxpelli/config-array-find-files)
 [![neostandard javascript style](https://img.shields.io/badge/code_style-neostandard-7fffff?style=flat&labelColor=ff80ff)](https://github.com/neostandard/neostandard)
 [![Module type: ESM](https://img.shields.io/badge/module%20type-esm-brightgreen)](https://github.com/voxpelli/badges-cjs-esm)
 [![Types in JS](https://img.shields.io/badge/types_in_js-yes-brightgreen)](https://github.com/voxpelli/types-in-js)

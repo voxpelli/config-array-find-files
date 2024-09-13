@@ -4,5 +4,5 @@
     "index.js",
     "index.d.ts"
   ],
-  "ignoreDependencies": ["@types/mocha", "@types/minimatch"]
+  "ignoreDependencies": ["@types/minimatch"]
 }

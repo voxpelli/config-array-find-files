@@ -1,6 +1,6 @@
 {
   "name": "@voxpelli/config-array-find-files",
-  "version": "0.1.2",
+  "version": "1.2.1",
   "description": "A proof of concept of a generic equivalent of ESLint's globSearch() for use with ConfigArray",
   "homepage": "http://github.com/voxpelli/config-array-find-files",
   "repository": {

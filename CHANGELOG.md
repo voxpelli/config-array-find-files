@@ -1,5 +1,18 @@
 # Changelog
 
+## [1.2.2](https://github.com/voxpelli/config-array-find-files/compare/v1.2.1...v1.2.2) (2025-01-03)
+
+
+### 🧹 Chores
+
+* **deps:** update @voxpelli/tsconfig to v15 ([#22](https://github.com/voxpelli/config-array-find-files/issues/22)) ([3a9242e](https://github.com/voxpelli/config-array-find-files/commit/3a9242eb62f0e35e211b934cbced5700c6d8d1f3))
+* **deps:** update dependency @nodelib/fs.walk to v3 ([#16](https://github.com/voxpelli/config-array-find-files/issues/16)) ([5ff9947](https://github.com/voxpelli/config-array-find-files/commit/5ff9947447435d01837aa8bdc9eb4281c2c3b0e6))
+* **deps:** update dependency knip to ^5.41.1 ([#15](https://github.com/voxpelli/config-array-find-files/issues/15)) ([06bd14f](https://github.com/voxpelli/config-array-find-files/commit/06bd14fd34ea5dedceac01c8b9ba7fb3387357e4))
+* **deps:** update test dependencies ([#12](https://github.com/voxpelli/config-array-find-files/issues/12)) ([3e79ea5](https://github.com/voxpelli/config-array-find-files/commit/3e79ea53e9e772e6117353b58d471c3bb769e0f9))
+* **deps:** update test dependencies ([#19](https://github.com/voxpelli/config-array-find-files/issues/19)) ([c68225b](https://github.com/voxpelli/config-array-find-files/commit/c68225b8af31d63b157acaeb809b8a3133390e2c))
+* fix tests ([11f006a](https://github.com/voxpelli/config-array-find-files/commit/11f006a2dc11e669f4c507ccffae6a7df71e6e69))
+* update linting config ([12abe81](https://github.com/voxpelli/config-array-find-files/commit/12abe811ed4a5a51ff6384c74e8993fb1c4141fa))
+
 ## [1.2.1](https://github.com/voxpelli/config-array-find-files/compare/v1.2.0...v1.2.1) (2024-09-13)
 
 

@@ -63,7 +63,7 @@
     "validate-conventional-commit": "^1.0.4"
   },
   "dependencies": {
-    "@nodelib/fs.walk": "^2.0.0"
+    "@nodelib/fs.walk": "^3.0.0"
   },
   "peerDependencies": {
     "@eslint/config-array": ">=0.16.0"

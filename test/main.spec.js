@@ -12,7 +12,7 @@ chai.use(chaiString);
 chai.should();
 
 describe('configArrayFindFiles', () => {
-  it('should work', async () => {
+  it('should find files', async () => {
     const configs = new ConfigArray([
       { files: ['*.js'] },
       { files: ['*.md'] },
@@ -25,10 +25,11 @@ describe('configArrayFindFiles', () => {
       configs,
     });
 
-    filePaths[0]?.should.endWith('README.md');
-    filePaths[1]?.should.endWith('eslint.config.js');
-    filePaths[2]?.should.endWith('index.js');
+    filePaths[0]?.should.endWith('CHANGELOG.md');
+    filePaths[1]?.should.endWith('README.md');
+    filePaths[2]?.should.endWith('eslint.config.js');
+    filePaths[3]?.should.endWith('index.js');
 
-    filePaths.should.have.length(3);
+    filePaths.should.have.length(4);
   });
 });

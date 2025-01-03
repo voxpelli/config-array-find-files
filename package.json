@@ -40,7 +40,7 @@
     "test": "run-s check test:*"
   },
   "devDependencies": {
-    "@eslint/config-array": "^0.18.0",
+    "@eslint/config-array": "^0.19.1",
     "@types/chai": "^4.3.19",
     "@types/chai-string": "^1.4.5",
     "@types/minimatch": "^5.1.2",

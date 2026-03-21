@@ -14,8 +14,16 @@
     "node": "^20.19.0 || ^22.13.0 || >=24"
   },
   "type": "module",
-  "exports": "./index.js",
-  "types": "index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./index.d.ts",
+      "default": "./index.js"
+    },
+    "./walk": {
+      "types": "./lib/async-walk.d.ts",
+      "default": "./lib/async-walk.js"
+    }
+  },
   "files": [
     "index.js",
     "index.d.ts",

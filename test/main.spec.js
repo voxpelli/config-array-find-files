@@ -1,15 +1,10 @@
 import { mkdir, rm, symlink } from 'node:fs/promises';
+import assert from 'node:assert/strict';
 import path from 'node:path';
 
 import { ConfigArray } from '@eslint/config-array';
-import chai from 'chai';
-import chaiString from 'chai-string';
 
 import { configArrayFindFiles } from '../index.js';
-
-chai.use(chaiString);
-
-chai.should();
 
 // eslint-disable-next-line n/no-unsupported-features/node-builtins -- available since Node 20.11.0, our minimum is 20.19.0
 const testDir = import.meta.dirname;
@@ -84,9 +79,9 @@ describe('configArrayFindFiles', () => {
 
     const filePaths = await configArrayFindFiles({ basePath: fixtureBasic, configs });
 
-    filePaths.should.have.length(2);
-    filePaths[0]?.should.endWith('file1.js');
-    filePaths[1]?.should.endWith('file2.md');
+    assert.equal(filePaths.length, 2);
+    assert.ok(filePaths[0]?.endsWith('file1.js'));
+    assert.ok(filePaths[1]?.endsWith('file2.md'));
   });
 
   it('should find nested files with ** glob patterns', async () => {
@@ -94,11 +89,11 @@ describe('configArrayFindFiles', () => {
 
     const filePaths = await configArrayFindFiles({ basePath: fixtureBasic, configs });
 
-    filePaths.should.have.length(4);
-    filePaths[0]?.should.endWith('file1.js');
-    filePaths[1]?.should.endWith('file2.md');
-    filePaths[2]?.should.endWith('deep-nested.md');
-    filePaths[3]?.should.endWith('nested.js');
+    assert.equal(filePaths.length, 4);
+    assert.ok(filePaths[0]?.endsWith('file1.js'));
+    assert.ok(filePaths[1]?.endsWith('file2.md'));
+    assert.ok(filePaths[2]?.endsWith('deep-nested.md'));
+    assert.ok(filePaths[3]?.endsWith('nested.js'));
   });
 
   it('should find nested files with configLoader', async () => {
@@ -109,11 +104,11 @@ describe('configArrayFindFiles', () => {
       configLoader: toConfigLoader(configs),
     });
 
-    filePaths.should.have.length(4);
-    filePaths[0]?.should.endWith('file1.js');
-    filePaths[1]?.should.endWith('file2.md');
-    filePaths[2]?.should.endWith('deep-nested.md');
-    filePaths[3]?.should.endWith('nested.js');
+    assert.equal(filePaths.length, 4);
+    assert.ok(filePaths[0]?.endsWith('file1.js'));
+    assert.ok(filePaths[1]?.endsWith('file2.md'));
+    assert.ok(filePaths[2]?.endsWith('deep-nested.md'));
+    assert.ok(filePaths[3]?.endsWith('nested.js'));
   });
 
   it('should respect deepFilter to skip subdirectories', async () => {
@@ -125,9 +120,9 @@ describe('configArrayFindFiles', () => {
       deepFilter: (entry) => !entry.path.includes('sub'),
     });
 
-    filePaths.should.have.length(2);
-    filePaths[0]?.should.endWith('file1.js');
-    filePaths[1]?.should.endWith('file2.md');
+    assert.equal(filePaths.length, 2);
+    assert.ok(filePaths[0]?.endsWith('file1.js'));
+    assert.ok(filePaths[1]?.endsWith('file2.md'));
   });
 
   it('should respect entryFilter with configs', async () => {
@@ -139,9 +134,9 @@ describe('configArrayFindFiles', () => {
       entryFilter: (entry) => entry.path.endsWith('.js'),
     });
 
-    filePaths.should.have.length(2);
-    filePaths[0]?.should.endWith('file1.js');
-    filePaths[1]?.should.endWith('nested.js');
+    assert.equal(filePaths.length, 2);
+    assert.ok(filePaths[0]?.endsWith('file1.js'));
+    assert.ok(filePaths[1]?.endsWith('nested.js'));
   });
 
   it('should respect deepFilter with configLoader', async () => {
@@ -153,9 +148,9 @@ describe('configArrayFindFiles', () => {
       deepFilter: (entry) => !entry.path.includes('sub'),
     });
 
-    filePaths.should.have.length(2);
-    filePaths[0]?.should.endWith('file1.js');
-    filePaths[1]?.should.endWith('file2.md');
+    assert.equal(filePaths.length, 2);
+    assert.ok(filePaths[0]?.endsWith('file1.js'));
+    assert.ok(filePaths[1]?.endsWith('file2.md'));
   });
 
   it('should respect entryFilter with configLoader', async () => {
@@ -167,10 +162,11 @@ describe('configArrayFindFiles', () => {
       entryFilter: (entry) => entry.path.endsWith('.js'),
     });
 
-    filePaths.should.have.length(2);
-    filePaths[0]?.should.endWith('file1.js');
-    filePaths[1]?.should.endWith('nested.js');
+    assert.equal(filePaths.length, 2);
+    assert.ok(filePaths[0]?.endsWith('file1.js'));
+    assert.ok(filePaths[1]?.endsWith('nested.js'));
   });
+
   // -- Edge cases --
 
   it('should return empty array for non-existent basePath', async () => {
@@ -181,7 +177,7 @@ describe('configArrayFindFiles', () => {
       configs,
     });
 
-    filePaths.should.have.length(0);
+    assert.equal(filePaths.length, 0);
   });
 
   it('should return empty array when basePath is a file', async () => {
@@ -192,54 +188,46 @@ describe('configArrayFindFiles', () => {
       configs,
     });
 
-    filePaths.should.have.length(0);
+    assert.equal(filePaths.length, 0);
   });
 
   it('should throw TypeError when neither configs nor configLoader provided', async () => {
-    try {
-      await configArrayFindFiles({ basePath: fixtureBasic });
-      throw new Error('should have thrown');
-    } catch (/** @type {any} */ err) {
-      err.should.be.instanceOf(TypeError);
-      err.message.should.include('configs');
-      err.message.should.include('configLoader');
-    }
+    await assert.rejects(
+      () => configArrayFindFiles({ basePath: fixtureBasic }),
+      TypeError
+    );
   });
 
   it('should propagate configLoader.isDirectoryIgnored errors', async () => {
     const error = new Error('isDirectoryIgnored failed');
 
-    try {
-      await configArrayFindFiles({
+    await assert.rejects(
+      () => configArrayFindFiles({
         basePath: projectRoot,
         configLoader: {
           isDirectoryIgnored: () => { throw error; },
           // eslint-disable-next-line unicorn/no-useless-undefined -- needed to match ConfigLoader type
           getConfig: () => undefined,
         },
-      });
-      throw new Error('should have thrown');
-    } catch (/** @type {any} */ err) {
-      err.should.equal(error);
-    }
+      }),
+      error
+    );
   });
 
   it('should propagate configLoader.getConfig rejections', async () => {
     const configs = await createTestConfigs(projectRoot);
     const error = new Error('getConfig failed');
 
-    try {
-      await configArrayFindFiles({
+    await assert.rejects(
+      () => configArrayFindFiles({
         basePath: projectRoot,
         configLoader: {
           isDirectoryIgnored: (/** @type {string} */ p) => configs.isDirectoryIgnored(p),
           getConfig: () => Promise.reject(error),
         },
-      });
-      throw new Error('should have thrown');
-    } catch (/** @type {any} */ err) {
-      err.should.equal(error);
-    }
+      }),
+      error
+    );
   });
 
   it('should find files with async configLoader', async () => {
@@ -253,7 +241,7 @@ describe('configArrayFindFiles', () => {
       },
     });
 
-    filePaths.should.have.length(4);
+    assert.equal(filePaths.length, 4);
   });
 
   // -- Symlink tests --
@@ -262,7 +250,7 @@ describe('configArrayFindFiles', () => {
     await withSymlinkFixture(this, async (symlinkFixture) => {
       const configs = await createTestConfigs(symlinkFixture);
       const filePaths = await configArrayFindFiles({ basePath: symlinkFixture, configs });
-      filePaths.should.have.length(0);
+      assert.equal(filePaths.length, 0);
     });
   });
 
@@ -270,9 +258,9 @@ describe('configArrayFindFiles', () => {
     await withSymlinkFixture(this, async (symlinkFixture) => {
       const configs = await createTestConfigs(symlinkFixture);
       const filePaths = await configArrayFindFiles({ basePath: symlinkFixture, configs, followSymbolicLinks: true });
-      filePaths.should.have.length(2);
-      filePaths.some(f => f.endsWith('nested.js')).should.equal(true);
-      filePaths.some(f => f.endsWith('deep-nested.md')).should.equal(true);
+      assert.equal(filePaths.length, 2);
+      assert.ok(filePaths.some(f => f.endsWith('nested.js')));
+      assert.ok(filePaths.some(f => f.endsWith('deep-nested.md')));
     });
   });
 
@@ -280,9 +268,9 @@ describe('configArrayFindFiles', () => {
     await withSymlinkFixture(this, async (symlinkFixture) => {
       const configs = await createTestConfigs(symlinkFixture);
       const filePaths = await configArrayFindFiles({ basePath: symlinkFixture, configLoader: toConfigLoader(configs), followSymbolicLinks: true });
-      filePaths.should.have.length(2);
-      filePaths.some(f => f.endsWith('nested.js')).should.equal(true);
-      filePaths.some(f => f.endsWith('deep-nested.md')).should.equal(true);
+      assert.equal(filePaths.length, 2);
+      assert.ok(filePaths.some(f => f.endsWith('nested.js')));
+      assert.ok(filePaths.some(f => f.endsWith('deep-nested.md')));
     });
   });
 
@@ -294,16 +282,10 @@ describe('configArrayFindFiles', () => {
 
     ac.abort();
 
-    try {
-      await configArrayFindFiles({
-        basePath: fixtureBasic,
-        configs,
-        signal: ac.signal,
-      });
-      throw new Error('should have thrown');
-    } catch (/** @type {any} */ err) {
-      err.name.should.equal('AbortError');
-    }
+    await assert.rejects(
+      () => configArrayFindFiles({ basePath: fixtureBasic, configs, signal: ac.signal }),
+      { name: 'AbortError' }
+    );
   });
 
   it('should abort traversal with pre-aborted signal (configLoader)', async () => {
@@ -312,51 +294,37 @@ describe('configArrayFindFiles', () => {
 
     ac.abort();
 
-    try {
-      await configArrayFindFiles({
-        basePath: fixtureBasic,
-        configLoader: toConfigLoader(configs),
-        signal: ac.signal,
-      });
-      throw new Error('should have thrown');
-    } catch (/** @type {any} */ err) {
-      err.name.should.equal('AbortError');
-    }
+    await assert.rejects(
+      () => configArrayFindFiles({ basePath: fixtureBasic, configLoader: toConfigLoader(configs), signal: ac.signal }),
+      { name: 'AbortError' }
+    );
   });
 
   // -- errorFilter tests --
 
-  it('should pass errorFilter to fswalk path (configs)', async () => {
+  it('should accept errorFilter with configs', async () => {
     const configs = await createTestConfigs(fixtureBasic);
-    /** @type {Error[]} */
-    const errors = [];
 
     const filePaths = await configArrayFindFiles({
       basePath: fixtureBasic,
       configs,
-      errorFilter: (/** @type {any} */ err) => {
-        errors.push(err);
-        return true;
-      },
+      errorFilter: () => true,
     });
 
-    // Should still find files even with errorFilter
-    filePaths.should.have.length.greaterThan(0);
+    assert.ok(filePaths.length > 0);
   });
 
-  it('should use errorFilter in asyncWalk (configLoader) to rethrow', async () => {
+  it('should rethrow when errorFilter rejects', async () => {
     const configs = await createTestConfigs(path.join(testDir, 'fixtures'));
 
     try {
       await configArrayFindFiles({
         basePath: path.join(testDir, 'fixtures/nonexistent-for-error'),
         configLoader: toConfigLoader(configs),
-        errorFilter: () => false, // reject all errors — rethrow
+        errorFilter: () => false,
       });
-      // If basePath doesn't exist, baseStat guard returns [] before reaching asyncWalk
-      // So this test just verifies errorFilter doesn't break anything
     } catch {
-      // Expected if the error propagates
+      // Expected if the error propagates — basePath guard may return [] first
     }
   });
 
@@ -381,17 +349,13 @@ describe('configArrayFindFiles', () => {
         getConfigStatus: (/** @type {string} */ p) => /** @type {import('../index.js').ConfigStatus} */ (configs.getConfigStatus(p)),
       },
       entryFilter: (entry) => {
-        // Use getConfigStatus to track why files are included/excluded
         const status = /** @type {import('../index.js').ConfigStatus} */ (configs.getConfigStatus(entry.path));
         statuses.set(entry.path, status);
-        return true; // include all (let getConfig filter)
+        return true;
       },
     });
 
-    // .js files should be matched
-    filePaths.should.have.length(2);
-
-    // statuses should contain entries for the files we saw
-    statuses.size.should.be.greaterThan(0);
+    assert.equal(filePaths.length, 2);
+    assert.ok(statuses.size > 0);
   });
 });

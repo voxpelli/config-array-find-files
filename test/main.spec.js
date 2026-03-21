@@ -11,6 +11,14 @@ import { configArrayFindFiles, configsToLoader } from '../index.js';
 const testDir = import.meta.dirname;
 
 /**
+ * @param {string[]} filePaths
+ * @param {number} expected
+ */
+function assertFileCount (filePaths, expected) {
+  assert.equal(filePaths.length, expected, `Expected ${expected} files, got ${filePaths.length}: ${filePaths.map(f => path.basename(f)).join(', ')}`);
+}
+
+/**
  * @param {string} basePath
  * @param {string[][]} [patterns]
  * @returns {Promise<import('@eslint/config-array').ConfigArray>}
@@ -61,7 +69,7 @@ describe('configArrayFindFiles', () => {
 
     const filePaths = await configArrayFindFiles({ basePath: fixtureBasic, configs });
 
-    assert.equal(filePaths.length, 2);
+    assertFileCount(filePaths, 2);
     assert.ok(filePaths[0]?.endsWith('file1.js'));
     assert.ok(filePaths[1]?.endsWith('file2.md'));
   });
@@ -71,7 +79,7 @@ describe('configArrayFindFiles', () => {
 
     const filePaths = await configArrayFindFiles({ basePath: fixtureBasic, configs });
 
-    assert.equal(filePaths.length, 4);
+    assertFileCount(filePaths, 4);
     assert.ok(filePaths[0]?.endsWith('file1.js'));
     assert.ok(filePaths[1]?.endsWith('file2.md'));
     assert.ok(filePaths[2]?.endsWith('deep-nested.md'));
@@ -86,7 +94,7 @@ describe('configArrayFindFiles', () => {
       configLoader: configsToLoader(configs),
     });
 
-    assert.equal(filePaths.length, 4);
+    assertFileCount(filePaths, 4);
     assert.ok(filePaths[0]?.endsWith('file1.js'));
     assert.ok(filePaths[1]?.endsWith('file2.md'));
     assert.ok(filePaths[2]?.endsWith('deep-nested.md'));
@@ -102,7 +110,7 @@ describe('configArrayFindFiles', () => {
       deepFilter: (entry) => !entry.path.includes('sub'),
     });
 
-    assert.equal(filePaths.length, 2);
+    assertFileCount(filePaths, 2);
     assert.ok(filePaths[0]?.endsWith('file1.js'));
     assert.ok(filePaths[1]?.endsWith('file2.md'));
   });
@@ -116,7 +124,7 @@ describe('configArrayFindFiles', () => {
       entryFilter: (entry) => entry.path.endsWith('.js'),
     });
 
-    assert.equal(filePaths.length, 2);
+    assertFileCount(filePaths, 2);
     assert.ok(filePaths[0]?.endsWith('file1.js'));
     assert.ok(filePaths[1]?.endsWith('nested.js'));
   });
@@ -130,7 +138,7 @@ describe('configArrayFindFiles', () => {
       deepFilter: (entry) => !entry.path.includes('sub'),
     });
 
-    assert.equal(filePaths.length, 2);
+    assertFileCount(filePaths, 2);
     assert.ok(filePaths[0]?.endsWith('file1.js'));
     assert.ok(filePaths[1]?.endsWith('file2.md'));
   });
@@ -144,7 +152,7 @@ describe('configArrayFindFiles', () => {
       entryFilter: (entry) => entry.path.endsWith('.js'),
     });
 
-    assert.equal(filePaths.length, 2);
+    assertFileCount(filePaths, 2);
     assert.ok(filePaths[0]?.endsWith('file1.js'));
     assert.ok(filePaths[1]?.endsWith('nested.js'));
   });
@@ -159,7 +167,7 @@ describe('configArrayFindFiles', () => {
       configs,
     });
 
-    assert.equal(filePaths.length, 0);
+    assertFileCount(filePaths, 0);
   });
 
   it('should return empty array when basePath is a file', async () => {
@@ -170,7 +178,7 @@ describe('configArrayFindFiles', () => {
       configs,
     });
 
-    assert.equal(filePaths.length, 0);
+    assertFileCount(filePaths, 0);
   });
 
   it('should throw TypeError when neither configs nor configLoader provided', async () => {
@@ -223,7 +231,7 @@ describe('configArrayFindFiles', () => {
       },
     });
 
-    assert.equal(filePaths.length, 4);
+    assertFileCount(filePaths, 4);
   });
 
   // -- Symlinks --
@@ -232,7 +240,7 @@ describe('configArrayFindFiles', () => {
     await withSymlinkFixture(t, async (symlinkFixture) => {
       const configs = await createTestConfigs(symlinkFixture);
       const filePaths = await configArrayFindFiles({ basePath: symlinkFixture, configs });
-      assert.equal(filePaths.length, 0);
+      assertFileCount(filePaths, 0);
     });
   });
 
@@ -240,7 +248,7 @@ describe('configArrayFindFiles', () => {
     await withSymlinkFixture(t, async (symlinkFixture) => {
       const configs = await createTestConfigs(symlinkFixture);
       const filePaths = await configArrayFindFiles({ basePath: symlinkFixture, configs, followSymbolicLinks: true });
-      assert.equal(filePaths.length, 2);
+      assertFileCount(filePaths, 2);
       assert.ok(filePaths.some(f => f.endsWith('nested.js')));
       assert.ok(filePaths.some(f => f.endsWith('deep-nested.md')));
     });
@@ -250,7 +258,7 @@ describe('configArrayFindFiles', () => {
     await withSymlinkFixture(t, async (symlinkFixture) => {
       const configs = await createTestConfigs(symlinkFixture);
       const filePaths = await configArrayFindFiles({ basePath: symlinkFixture, configLoader: configsToLoader(configs), followSymbolicLinks: true });
-      assert.equal(filePaths.length, 2);
+      assertFileCount(filePaths, 2);
       assert.ok(filePaths.some(f => f.endsWith('nested.js')));
       assert.ok(filePaths.some(f => f.endsWith('deep-nested.md')));
     });

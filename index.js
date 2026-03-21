@@ -4,9 +4,14 @@ import path from 'node:path';
 import fswalk from '@nodelib/fs.walk';
 
 /**
+ * @typedef {'ignored' | 'external' | 'unconfigured' | 'matched'} ConfigStatus
+ */
+
+/**
  * @typedef {object} ConfigLoader
  * @property {(dirPath: string) => boolean | Promise<boolean>} isDirectoryIgnored Check if a directory is ignored.
  * @property {(filePath: string) => object | undefined | Promise<object | undefined>} getConfig Get config for a file. Returns undefined if file has no matching config.
+ * @property {(filePath: string) => ConfigStatus | Promise<ConfigStatus>} [getConfigStatus] Optional. Returns the config status for a file: "ignored", "external", "unconfigured", or "matched".
  */
 
 /**
@@ -111,9 +116,11 @@ export async function configArrayFindFiles (options) {
   }
 
   // Determine the config source — either configLoader or a wrapper around configs
+  const typedConfigs = /** @type {import('@eslint/config-array').ConfigArray} */ (configs);
   const resolvedConfigs = configLoader || /** @type {import('./index.js').ConfigLoader} */ ({
-    isDirectoryIgnored: (/** @type {string} */ p) => /** @type {import('@eslint/config-array').ConfigArray} */ (configs).isDirectoryIgnored(p),
-    getConfig: (/** @type {string} */ p) => /** @type {import('@eslint/config-array').ConfigArray} */ (configs).getConfig(p),
+    isDirectoryIgnored: (/** @type {string} */ p) => typedConfigs.isDirectoryIgnored(p),
+    getConfig: (/** @type {string} */ p) => typedConfigs.getConfig(p),
+    getConfigStatus: (/** @type {string} */ p) => /** @type {import('./index.js').ConfigStatus} */ (typedConfigs.getConfigStatus(p)),
   });
 
   // Use asyncWalk when configLoader is provided or when followSymbolicLinks is needed

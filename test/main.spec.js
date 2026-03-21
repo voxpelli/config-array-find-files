@@ -388,4 +388,39 @@ describe('configArrayFindFiles', () => {
       // Expected if the error propagates
     }
   });
+
+  // -- getConfigStatus tests --
+
+  it('should expose getConfigStatus via configLoader entryFilter', async () => {
+    const configs = new ConfigArray([
+      { ignores: ['ignored/**'] },
+      { files: ['**/*.js'] },
+    ], { basePath: fixtureBasic });
+
+    await configs.normalize();
+
+    /** @type {Map<string, string>} */
+    const statuses = new Map();
+
+    const filePaths = await configArrayFindFiles({
+      basePath: fixtureBasic,
+      configLoader: {
+        isDirectoryIgnored: (/** @type {string} */ p) => configs.isDirectoryIgnored(p),
+        getConfig: (/** @type {string} */ p) => configs.getConfig(p),
+        getConfigStatus: (/** @type {string} */ p) => /** @type {import('../index.js').ConfigStatus} */ (configs.getConfigStatus(p)),
+      },
+      entryFilter: (entry) => {
+        // Use getConfigStatus to track why files are included/excluded
+        const status = /** @type {import('../index.js').ConfigStatus} */ (configs.getConfigStatus(entry.path));
+        statuses.set(entry.path, status);
+        return true; // include all (let getConfig filter)
+      },
+    });
+
+    // .js files should be matched
+    filePaths.should.have.length(2);
+
+    // statuses should contain entries for the files we saw
+    statuses.size.should.be.greaterThan(0);
+  });
 });

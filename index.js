@@ -29,7 +29,7 @@ import path from 'node:path';
  * @param {AsyncWalkOptions} options
  * @returns {Promise<string[]>} An array of matching file paths.
  */
-async function asyncWalk (options) {
+export async function asyncWalk (options) {
   const { basePath, deepFilter, entryFilter, errorFilter, followSymbolicLinks, signal } = options;
   /** @type {string[]} */
   const results = [];

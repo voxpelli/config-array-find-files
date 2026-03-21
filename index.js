@@ -16,9 +16,10 @@ import fswalk from '@nodelib/fs.walk';
  * @param {(entry: import('@nodelib/fs.walk').Entry) => boolean | Promise<boolean>} deepFilter Filter for directory traversal.
  * @param {(entry: import('@nodelib/fs.walk').Entry) => boolean | Promise<boolean>} entryFilter Filter for file inclusion.
  * @param {boolean} followSymbolicLinks Whether to follow symbolic links.
+ * @param {AbortSignal} [signal] An AbortSignal to cancel the traversal.
  * @returns {Promise<string[]>} An array of matching file paths.
  */
-async function asyncWalk (basePath, deepFilter, entryFilter, followSymbolicLinks) {
+async function asyncWalk (basePath, deepFilter, entryFilter, followSymbolicLinks, signal) {
   /** @type {string[]} */
   const results = [];
 
@@ -27,6 +28,8 @@ async function asyncWalk (basePath, deepFilter, entryFilter, followSymbolicLinks
    * @returns {Promise<void>}
    */
   async function walk (dirPath) {
+    signal?.throwIfAborted();
+
     /** @type {import('node:fs').Dir | undefined} */
     let dir;
 
@@ -78,6 +81,7 @@ async function asyncWalk (basePath, deepFilter, entryFilter, followSymbolicLinks
  * @param {import('@nodelib/fs.walk').DeepFilterFunction} [options.deepFilter] Optional function that indicates whether the directory will be read deep or not.
  * @param {import('@nodelib/fs.walk').EntryFilterFunction} [options.entryFilter] Optional function that indicates whether the entry will be included to results or not.
  * @param {boolean} [options.followSymbolicLinks] Follow symbolic links when walking directories. Default: false.
+ * @param {AbortSignal} [options.signal] An AbortSignal to cancel the traversal.
  * @returns {Promise<Array<string>>} An array of matching file paths or an empty array if there are no matches.
  */
 export async function configArrayFindFiles (options) {
@@ -88,6 +92,7 @@ export async function configArrayFindFiles (options) {
     deepFilter,
     entryFilter,
     followSymbolicLinks,
+    signal,
   } = options;
 
   if (!configs && !configLoader) {
@@ -127,7 +132,8 @@ export async function configArrayFindFiles (options) {
         }
         return (await resolvedConfigs.getConfig(entry.path)) !== undefined;
       },
-      Boolean(followSymbolicLinks)
+      Boolean(followSymbolicLinks),
+      signal
     );
   }
 
@@ -162,6 +168,7 @@ export async function configArrayFindFiles (options) {
     fswalk.walk(
       basePath,
       {
+        ...(signal ? { signal } : {}),
         deepFilter: wrapFilter(entry => {
           if (deepFilter && !deepFilter(entry)) {
             return false;

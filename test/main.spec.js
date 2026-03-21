@@ -314,4 +314,42 @@ describe('configArrayFindFiles', () => {
       await rm(symlinkFixture, { recursive: true });
     }
   });
+
+  // -- AbortSignal tests --
+
+  it('should abort traversal with pre-aborted signal (configs)', async () => {
+    const configs = await createTestConfigs(fixtureBasic);
+    const ac = new AbortController();
+
+    ac.abort();
+
+    try {
+      await configArrayFindFiles({
+        basePath: fixtureBasic,
+        configs,
+        signal: ac.signal,
+      });
+      throw new Error('should have thrown');
+    } catch (/** @type {any} */ err) {
+      err.name.should.equal('AbortError');
+    }
+  });
+
+  it('should abort traversal with pre-aborted signal (configLoader)', async () => {
+    const configs = await createTestConfigs(fixtureBasic);
+    const ac = new AbortController();
+
+    ac.abort();
+
+    try {
+      await configArrayFindFiles({
+        basePath: fixtureBasic,
+        configLoader: toConfigLoader(configs),
+        signal: ac.signal,
+      });
+      throw new Error('should have thrown');
+    } catch (/** @type {any} */ err) {
+      err.name.should.equal('AbortError');
+    }
+  });
 });

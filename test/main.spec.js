@@ -13,15 +13,17 @@ chai.should();
 
 describe('configArrayFindFiles', () => {
   it('should find files', async () => {
+    const basePath = path.join(dirname(import.meta.url), '../');
+
     const configs = new ConfigArray([
       { files: ['*.js'] },
       { files: ['*.md'] },
-    ]);
+    ], { basePath });
 
     await configs.normalize();
 
     const filePaths = await configArrayFindFiles({
-      basePath: path.join(dirname(import.meta.url), '../'),
+      basePath,
       configs,
     });
 

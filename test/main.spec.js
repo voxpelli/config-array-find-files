@@ -4,7 +4,6 @@ import path from 'node:path';
 import { ConfigArray } from '@eslint/config-array';
 import chai from 'chai';
 import chaiString from 'chai-string';
-import { dirname } from 'desm';
 
 import { configArrayFindFiles } from '../index.js';
 
@@ -12,7 +11,8 @@ chai.use(chaiString);
 
 chai.should();
 
-const testDir = dirname(import.meta.url);
+// eslint-disable-next-line n/no-unsupported-features/node-builtins -- available since Node 20.11.0, our minimum is 20.19.0
+const testDir = import.meta.dirname;
 
 /**
  * @param {string} basePath

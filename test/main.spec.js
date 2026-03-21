@@ -1,6 +1,7 @@
 import { mkdir, rm, symlink } from 'node:fs/promises';
 import assert from 'node:assert/strict';
 import path from 'node:path';
+import { before, describe, it } from 'node:test';
 
 import { ConfigArray } from '@eslint/config-array';
 
@@ -28,10 +29,10 @@ async function createTestConfigs (basePath, patterns) {
 /**
  * Creates a temporary directory with a symlink to fixtures/basic/sub, runs the test function, then cleans up.
  *
- * @param {Mocha.Context} ctx
+ * @param {import('node:test').TestContext} t
  * @param {(symlinkFixture: string) => Promise<void>} testFn
  */
-async function withSymlinkFixture (ctx, testFn) {
+async function withSymlinkFixture (t, testFn) {
   const symlinkFixture = path.join(testDir, 'fixtures/symlink-test');
 
   await mkdir(symlinkFixture, { recursive: true });
@@ -39,7 +40,7 @@ async function withSymlinkFixture (ctx, testFn) {
   try {
     await symlink(path.join(testDir, 'fixtures/basic/sub'), path.join(symlinkFixture, 'linked-sub'));
   } catch {
-    ctx.skip();
+    t.skip('Symlinks not supported on this platform');
     return;
   }
 
@@ -232,16 +233,16 @@ describe('configArrayFindFiles', () => {
 
   // -- Symlinks --
 
-  it('should skip symlinked directories by default', async function () {
-    await withSymlinkFixture(this, async (symlinkFixture) => {
+  it('should skip symlinked directories by default', async (t) => {
+    await withSymlinkFixture(t, async (symlinkFixture) => {
       const configs = await createTestConfigs(symlinkFixture);
       const filePaths = await configArrayFindFiles({ basePath: symlinkFixture, configs });
       assert.equal(filePaths.length, 0);
     });
   });
 
-  it('should follow symlinked directories when followSymbolicLinks is true', async function () {
-    await withSymlinkFixture(this, async (symlinkFixture) => {
+  it('should follow symlinked directories when followSymbolicLinks is true', async (t) => {
+    await withSymlinkFixture(t, async (symlinkFixture) => {
       const configs = await createTestConfigs(symlinkFixture);
       const filePaths = await configArrayFindFiles({ basePath: symlinkFixture, configs, followSymbolicLinks: true });
       assert.equal(filePaths.length, 2);
@@ -250,8 +251,8 @@ describe('configArrayFindFiles', () => {
     });
   });
 
-  it('should follow symlinks with configLoader when followSymbolicLinks is true', async function () {
-    await withSymlinkFixture(this, async (symlinkFixture) => {
+  it('should follow symlinks with configLoader when followSymbolicLinks is true', async (t) => {
+    await withSymlinkFixture(t, async (symlinkFixture) => {
       const configs = await createTestConfigs(symlinkFixture);
       const filePaths = await configArrayFindFiles({ basePath: symlinkFixture, configLoader: configsToLoader(configs), followSymbolicLinks: true });
       assert.equal(filePaths.length, 2);

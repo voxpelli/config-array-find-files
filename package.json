@@ -1,13 +1,13 @@
 {
   "name": "@voxpelli/config-array-find-files",
   "version": "1.2.2",
-  "description": "A proof of concept of a generic equivalent of ESLint's globSearch() for use with ConfigArray",
+  "description": "A generic equivalent of ESLint's globSearch() for use with ConfigArray",
   "homepage": "http://github.com/voxpelli/config-array-find-files",
   "repository": {
     "type": "git",
     "url": "git://github.com/voxpelli/config-array-find-files.git"
   },
-  "keywords": [],
+  "keywords": ["eslint", "config-array", "glob", "files"],
   "author": "Pelle Wessman <pelle@kodfabrik.se> (http://kodfabrik.se/)",
   "license": "MIT",
   "engines": {

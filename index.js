@@ -35,19 +35,23 @@ async function asyncWalk (basePath, deepFilter, entryFilter) {
       return;
     }
 
-    for await (const dirent of dir) {
-      const fullPath = path.join(dirPath, dirent.name);
+    try {
+      for await (const dirent of dir) {
+        const fullPath = path.join(dirPath, dirent.name);
 
-      /** @type {import('@nodelib/fs.walk').Entry} */
-      const entry = { path: fullPath, dirent, name: dirent.name };
+        /** @type {import('@nodelib/fs.walk').Entry} */
+        const entry = { path: fullPath, dirent, name: dirent.name };
 
-      if (dirent.isDirectory()) {
-        if (await deepFilter(entry)) {
-          await walk(fullPath);
+        if (dirent.isDirectory()) {
+          if (await deepFilter(entry)) {
+            await walk(fullPath);
+          }
+        } else if (await entryFilter(entry)) {
+          results.push(fullPath);
         }
-      } else if (await entryFilter(entry)) {
-        results.push(fullPath);
       }
+    } finally {
+      await dir.close().catch(() => {});
     }
   }
 
@@ -79,6 +83,10 @@ export async function configArrayFindFiles (options) {
     entryFilter,
   } = options;
 
+  if (!configs && !configLoader) {
+    throw new TypeError('Either "configs" or "configLoader" must be provided');
+  }
+
   // eslint-disable-next-line security/detect-non-literal-fs-filename -- basePath is caller-provided
   const baseStat = await stat(basePath).catch(() => {});
 
@@ -106,6 +114,9 @@ export async function configArrayFindFiles (options) {
       }
     );
   }
+
+  // At this point configLoader is falsy, so configs is guaranteed defined by the validation above
+  const resolvedConfigs = /** @type {import('@eslint/config-array').ConfigArray} */ (configs);
 
   /** @type {import('@nodelib/fs.walk').Entry[]} */
   const filePaths = (await new Promise((resolve, reject) => {
@@ -135,11 +146,6 @@ export async function configArrayFindFiles (options) {
       return result;
     }
 
-    if (!configs) {
-      resolve([]);
-      return;
-    }
-
     fswalk.walk(
       basePath,
       {
@@ -147,7 +153,7 @@ export async function configArrayFindFiles (options) {
           if (deepFilter && !deepFilter(entry)) {
             return false;
           }
-          return !configs.isDirectoryIgnored(entry.path);
+          return !resolvedConfigs.isDirectoryIgnored(entry.path);
         }),
         entryFilter: wrapFilter(entry => {
           // entries may be directories or files so filter out directories
@@ -157,7 +163,7 @@ export async function configArrayFindFiles (options) {
           if (entryFilter && !entryFilter(entry)) {
             return false;
           }
-          return configs.getConfig(entry.path) !== undefined;
+          return resolvedConfigs.getConfig(entry.path) !== undefined;
         }),
       },
       (error, entries) => {

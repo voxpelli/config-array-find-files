@@ -106,4 +106,40 @@ describe('configArrayFindFiles', () => {
 
     filePaths.should.have.length(0);
   });
+
+  it('should propagate configLoader.isDirectoryIgnored errors', async () => {
+    const error = new Error('isDirectoryIgnored failed');
+
+    try {
+      await configArrayFindFiles({
+        basePath,
+        configLoader: {
+          isDirectoryIgnored: () => { throw error; },
+          // eslint-disable-next-line unicorn/no-useless-undefined -- needed to match ConfigLoader type
+          getConfig: () => undefined,
+        },
+      });
+      throw new Error('should have thrown');
+    } catch (/** @type {any} */ err) {
+      err.should.equal(error);
+    }
+  });
+
+  it('should propagate configLoader.getConfig rejections', async () => {
+    const configs = await createTestConfigs(basePath);
+    const error = new Error('getConfig failed');
+
+    try {
+      await configArrayFindFiles({
+        basePath,
+        configLoader: {
+          isDirectoryIgnored: (/** @type {string} */ p) => configs.isDirectoryIgnored(p),
+          getConfig: () => Promise.reject(error),
+        },
+      });
+      throw new Error('should have thrown');
+    } catch (/** @type {any} */ err) {
+      err.should.equal(error);
+    }
+  });
 });

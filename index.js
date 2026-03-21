@@ -1,5 +1,8 @@
 import { stat } from 'node:fs/promises';
 
+/** @import { ConfigArray } from '@eslint/config-array' */
+/** @import { WalkEntry } from './lib/async-walk.js' */
+
 import { asyncWalk as asyncWalkImpl } from './lib/async-walk.js';
 
 export { asyncWalk } from './lib/async-walk.js';
@@ -16,7 +19,7 @@ export { asyncWalk } from './lib/async-walk.js';
 /**
  * Wraps a ConfigArray as a ConfigLoader.
  *
- * @param {import('@eslint/config-array').ConfigArray} configs
+ * @param {ConfigArray} configs
  * @returns {ConfigLoader}
  */
 export function configsToLoader (configs) {
@@ -34,10 +37,10 @@ export function configsToLoader (configs) {
  *
  * @param {Object} options The options for this function.
  * @param {string} options.basePath The directory to search.
- * @param {import('@eslint/config-array').ConfigArray} [options.configs] The config array to use for determining what to ignore.
+ * @param {ConfigArray} [options.configs] The config array to use for determining what to ignore.
  * @param {ConfigLoader} [options.configLoader] A config loader with async-capable isDirectoryIgnored/getConfig methods. Alternative to configs.
- * @param {(entry: import('./lib/async-walk.js').WalkEntry) => boolean} [options.deepFilter] Optional function that indicates whether the directory will be read deep or not.
- * @param {(entry: import('./lib/async-walk.js').WalkEntry) => boolean} [options.entryFilter] Optional function that indicates whether the entry will be included to results or not.
+ * @param {(entry: WalkEntry) => boolean} [options.deepFilter] Optional function that indicates whether the directory will be read deep or not.
+ * @param {(entry: WalkEntry) => boolean} [options.entryFilter] Optional function that indicates whether the entry will be included to results or not.
  * @param {boolean} [options.followSymbolicLinks] Follow symbolic links when walking directories. Default: false.
  * @param {AbortSignal} [options.signal] An AbortSignal to cancel the traversal.
  * @param {(error: NodeJS.ErrnoException) => boolean} [options.errorFilter] Optional function to filter errors during traversal. Return true to skip the error and continue.
@@ -66,7 +69,7 @@ export async function configArrayFindFiles (options) {
     return [];
   }
 
-  const loader = configLoader || configsToLoader(/** @type {import('@eslint/config-array').ConfigArray} */ (configs));
+  const loader = configLoader || configsToLoader(/** @type {ConfigArray} */ (configs));
 
   return asyncWalkImpl({
     basePath,

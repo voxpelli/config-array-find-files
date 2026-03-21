@@ -17,9 +17,10 @@ import fswalk from '@nodelib/fs.walk';
  * @param {(entry: import('@nodelib/fs.walk').Entry) => boolean | Promise<boolean>} entryFilter Filter for file inclusion.
  * @param {boolean} followSymbolicLinks Whether to follow symbolic links.
  * @param {AbortSignal} [signal] An AbortSignal to cancel the traversal.
+ * @param {import('@nodelib/fs.walk').ErrorFilterFunction} [errorFilter] Optional function to filter errors. Return true to skip the error.
  * @returns {Promise<string[]>} An array of matching file paths.
  */
-async function asyncWalk (basePath, deepFilter, entryFilter, followSymbolicLinks, signal) {
+async function asyncWalk (basePath, deepFilter, entryFilter, followSymbolicLinks, signal, errorFilter) {
   /** @type {string[]} */
   const results = [];
 
@@ -35,8 +36,9 @@ async function asyncWalk (basePath, deepFilter, entryFilter, followSymbolicLinks
 
     try {
       dir = await opendir(dirPath);
-    } catch {
-      return;
+    } catch (err) {
+      if (!errorFilter || errorFilter(/** @type {NodeJS.ErrnoException} */ (err))) return;
+      throw err;
     }
 
     try {
@@ -82,6 +84,7 @@ async function asyncWalk (basePath, deepFilter, entryFilter, followSymbolicLinks
  * @param {import('@nodelib/fs.walk').EntryFilterFunction} [options.entryFilter] Optional function that indicates whether the entry will be included to results or not.
  * @param {boolean} [options.followSymbolicLinks] Follow symbolic links when walking directories. Default: false.
  * @param {AbortSignal} [options.signal] An AbortSignal to cancel the traversal.
+ * @param {import('@nodelib/fs.walk').ErrorFilterFunction} [options.errorFilter] Optional function to filter errors during traversal. Return true to skip the error and continue.
  * @returns {Promise<Array<string>>} An array of matching file paths or an empty array if there are no matches.
  */
 export async function configArrayFindFiles (options) {
@@ -91,6 +94,7 @@ export async function configArrayFindFiles (options) {
     configs,
     deepFilter,
     entryFilter,
+    errorFilter,
     followSymbolicLinks,
     signal,
   } = options;
@@ -133,7 +137,8 @@ export async function configArrayFindFiles (options) {
         return (await resolvedConfigs.getConfig(entry.path)) !== undefined;
       },
       Boolean(followSymbolicLinks),
-      signal
+      signal,
+      errorFilter
     );
   }
 
@@ -169,6 +174,7 @@ export async function configArrayFindFiles (options) {
       basePath,
       {
         ...(signal ? { signal } : {}),
+        ...(errorFilter ? { errorFilter } : {}),
         deepFilter: wrapFilter(entry => {
           if (deepFilter && !deepFilter(entry)) {
             return false;

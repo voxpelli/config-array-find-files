@@ -1,7 +1,7 @@
 import { mkdir, rm, symlink } from 'node:fs/promises';
 import assert from 'node:assert/strict';
 import path from 'node:path';
-import { before, describe, it } from 'node:test';
+import { describe, it } from 'node:test';
 
 import { ConfigArray } from '@eslint/config-array';
 
@@ -52,12 +52,7 @@ async function withSymlinkFixture (t, testFn) {
 }
 
 describe('configArrayFindFiles', () => {
-  /** @type {string} */
-  let fixtureBasic;
-
-  before(() => {
-    fixtureBasic = path.join(testDir, 'fixtures/basic');
-  });
+  const fixtureBasic = path.join(testDir, 'fixtures/basic');
 
   // -- Core --
 

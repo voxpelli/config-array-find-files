@@ -85,8 +85,8 @@ export async function configArrayFindFiles (options) {
       }
       return (await loader.getConfig(entry.path)) !== undefined;
     },
+    errorFilter,
     followSymbolicLinks: Boolean(followSymbolicLinks),
-    ...(signal ? { signal } : {}),
-    ...(errorFilter ? { errorFilter } : {}),
+    signal,
   });
 }

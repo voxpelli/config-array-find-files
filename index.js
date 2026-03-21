@@ -33,8 +33,6 @@ export function configsToLoader (configs) {
  * Searches a directory looking for matching files. This uses the config
  * array's logic to determine if a directory or file should be ignored.
  *
- * Derived from {@link https://github.com/eslint/eslint/blob/d2d06f7a70d9b96b125ecf2de8951bea549db4da/lib/eslint/eslint-helpers.js#L217-L382|ESLint globSearch()}
- *
  * @param {Object} options The options for this function.
  * @param {string} options.basePath The directory to search.
  * @param {ConfigArray} [options.configs] The config array to use for determining what to ignore.

@@ -114,3 +114,35 @@ An object with methods for config resolution, all of which may return a value or
 #### Returns
 
 A `Promise` that resolves to an array with `string` file paths for all matching files.
+
+### asyncWalk()
+
+A standalone async directory walker with no config-array dependency. Available as a separate import:
+
+```javascript
+import { asyncWalk } from '@voxpelli/config-array-find-files/walk';
+
+const files = await asyncWalk({
+  basePath: '/path/to/dir',
+  deepFilter: (entry) => !entry.path.includes('node_modules'),
+  entryFilter: (entry) => entry.path.endsWith('.js'),
+});
+```
+
+### configsToLoader()
+
+Wraps a `ConfigArray` as a `ConfigLoader`:
+
+```javascript
+import { configsToLoader } from '@voxpelli/config-array-find-files';
+
+const loader = configsToLoader(configs);
+```
+
+## Types
+
+TypeScript types are available via JSDoc-generated `.d.ts` files:
+
+```typescript
+import type { ConfigLoader, WalkEntry, AsyncWalkOptions } from '@voxpelli/config-array-find-files';
+```

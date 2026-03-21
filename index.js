@@ -52,7 +52,7 @@ async function asyncWalk (options) {
     try {
       dir = await opendir(dirPath);
     } catch (err) {
-      if (!errorFilter || errorFilter(/** @type {NodeJS.ErrnoException} */ (err))) return;
+      if (errorFilter?.(/** @type {NodeJS.ErrnoException} */ (err))) return;
       throw err;
     }
 

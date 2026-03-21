@@ -1,4 +1,60 @@
+import { opendir, stat } from 'node:fs/promises';
+import path from 'node:path';
+
 import fswalk from '@nodelib/fs.walk';
+
+/**
+ * @typedef {object} ConfigLoader
+ * @property {(dirPath: string) => boolean | Promise<boolean>} isDirectoryIgnored Check if a directory is ignored.
+ * @property {(filePath: string) => object | undefined | Promise<object | undefined>} getConfig Get config for a file. Returns undefined if file has no matching config.
+ */
+
+/**
+ * Recursively walks a directory tree, applying async filter functions.
+ *
+ * @param {string} basePath The directory to walk.
+ * @param {(entry: import('@nodelib/fs.walk').Entry) => boolean | Promise<boolean>} deepFilter Filter for directory traversal.
+ * @param {(entry: import('@nodelib/fs.walk').Entry) => boolean | Promise<boolean>} entryFilter Filter for file inclusion.
+ * @returns {Promise<string[]>} An array of matching file paths.
+ */
+async function asyncWalk (basePath, deepFilter, entryFilter) {
+  /** @type {string[]} */
+  const results = [];
+
+  /**
+   * @param {string} dirPath
+   * @returns {Promise<void>}
+   */
+  async function walk (dirPath) {
+    /** @type {import('node:fs').Dir | undefined} */
+    let dir;
+
+    try {
+      dir = await opendir(dirPath);
+    } catch {
+      return;
+    }
+
+    for await (const dirent of dir) {
+      const fullPath = path.join(dirPath, dirent.name);
+
+      /** @type {import('@nodelib/fs.walk').Entry} */
+      const entry = { path: fullPath, dirent, name: dirent.name };
+
+      if (dirent.isDirectory()) {
+        if (await deepFilter(entry)) {
+          await walk(fullPath);
+        }
+      } else if (await entryFilter(entry)) {
+        results.push(fullPath);
+      }
+    }
+  }
+
+  await walk(basePath);
+
+  return results.sort();
+}
 
 /**
  * Searches a directory looking for matching files. This uses the config
@@ -8,7 +64,8 @@ import fswalk from '@nodelib/fs.walk';
  *
  * @param {Object} options The options for this function.
  * @param {string} options.basePath The directory to search.
- * @param {import('@eslint/config-array').ConfigArray} options.configs The config array to use for determining what to ignore.
+ * @param {import('@eslint/config-array').ConfigArray} [options.configs] The config array to use for determining what to ignore.
+ * @param {ConfigLoader} [options.configLoader] A config loader with async-capable isDirectoryIgnored/getConfig methods. Alternative to configs.
  * @param {import('@nodelib/fs.walk').DeepFilterFunction} [options.deepFilter] Optional function that indicates whether the directory will be read deep or not.
  * @param {import('@nodelib/fs.walk').EntryFilterFunction} [options.entryFilter] Optional function that indicates whether the entry will be included to results or not.
  * @returns {Promise<Array<string>>} An array of matching file paths or an empty array if there are no matches.
@@ -16,10 +73,39 @@ import fswalk from '@nodelib/fs.walk';
 export async function configArrayFindFiles (options) {
   const {
     basePath,
+    configLoader,
     configs,
     deepFilter,
     entryFilter,
   } = options;
+
+  // eslint-disable-next-line security/detect-non-literal-fs-filename -- basePath is caller-provided
+  const baseStat = await stat(basePath).catch(() => {});
+
+  if (!baseStat?.isDirectory()) {
+    return [];
+  }
+
+  if (configLoader) {
+    return asyncWalk(
+      basePath,
+      async (entry) => {
+        if (deepFilter && !deepFilter(entry)) {
+          return false;
+        }
+        return !(await configLoader.isDirectoryIgnored(entry.path));
+      },
+      async (entry) => {
+        if (entry.dirent.isDirectory()) {
+          return false;
+        }
+        if (entryFilter && !entryFilter(entry)) {
+          return false;
+        }
+        return (await configLoader.getConfig(entry.path)) !== undefined;
+      }
+    );
+  }
 
   /** @type {import('@nodelib/fs.walk').Entry[]} */
   const filePaths = (await new Promise((resolve, reject) => {
@@ -47,6 +133,11 @@ export async function configArrayFindFiles (options) {
       };
 
       return result;
+    }
+
+    if (!configs) {
+      resolve([]);
+      return;
     }
 
     fswalk.walk(

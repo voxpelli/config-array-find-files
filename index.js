@@ -87,6 +87,20 @@ async function asyncWalk (options) {
 }
 
 /**
+ * Wraps a ConfigArray as a ConfigLoader.
+ *
+ * @param {import('@eslint/config-array').ConfigArray} configs
+ * @returns {ConfigLoader}
+ */
+function configsToLoader (configs) {
+  return {
+    isDirectoryIgnored: (/** @type {string} */ p) => configs.isDirectoryIgnored(p),
+    getConfig: (/** @type {string} */ p) => configs.getConfig(p),
+    getConfigStatus: (/** @type {string} */ p) => /** @type {ConfigStatus} */ (configs.getConfigStatus(p)),
+  };
+}
+
+/**
  * Searches a directory looking for matching files. This uses the config
  * array's logic to determine if a directory or file should be ignored.
  *
@@ -126,13 +140,7 @@ export async function configArrayFindFiles (options) {
     return [];
   }
 
-  // Determine the config source — either configLoader or a wrapper around configs
-  const typedConfigs = /** @type {import('@eslint/config-array').ConfigArray} */ (configs);
-  const resolvedConfigs = configLoader || /** @type {import('./index.js').ConfigLoader} */ ({
-    isDirectoryIgnored: (/** @type {string} */ p) => typedConfigs.isDirectoryIgnored(p),
-    getConfig: (/** @type {string} */ p) => typedConfigs.getConfig(p),
-    getConfigStatus: (/** @type {string} */ p) => /** @type {import('./index.js').ConfigStatus} */ (typedConfigs.getConfigStatus(p)),
-  });
+  const loader = configLoader || configsToLoader(/** @type {import('@eslint/config-array').ConfigArray} */ (configs));
 
   return asyncWalk({
     basePath,
@@ -140,7 +148,7 @@ export async function configArrayFindFiles (options) {
       if (deepFilter && !deepFilter(entry)) {
         return false;
       }
-      return !(await resolvedConfigs.isDirectoryIgnored(entry.path));
+      return !(await loader.isDirectoryIgnored(entry.path));
     },
     entryFilter: async (entry) => {
       if (entry.dirent.isDirectory()) {
@@ -149,7 +157,7 @@ export async function configArrayFindFiles (options) {
       if (entryFilter && !entryFilter(entry)) {
         return false;
       }
-      return (await resolvedConfigs.getConfig(entry.path)) !== undefined;
+      return (await loader.getConfig(entry.path)) !== undefined;
     },
     followSymbolicLinks: Boolean(followSymbolicLinks),
     ...(signal ? { signal } : {}),

@@ -1,7 +1,8 @@
 {
   "extends": "@voxpelli/tsconfig/node20.json",
   "files": [
-    "index.js"
+    "index.js",
+    "lib/async-walk.js"
   ],
   "include": [
     "test/**/*",

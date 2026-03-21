@@ -4,7 +4,7 @@ import path from 'node:path';
 
 import { ConfigArray } from '@eslint/config-array';
 
-import { configArrayFindFiles } from '../index.js';
+import { configArrayFindFiles, configsToLoader } from '../index.js';
 
 // eslint-disable-next-line n/no-unsupported-features/node-builtins -- available since Node 20.11.0, our minimum is 20.19.0
 const testDir = import.meta.dirname;
@@ -23,17 +23,6 @@ async function createTestConfigs (basePath, patterns) {
   await configs.normalize();
 
   return configs;
-}
-
-/**
- * @param {import('@eslint/config-array').ConfigArray} configs
- * @returns {import('../index.js').ConfigLoader}
- */
-function toConfigLoader (configs) {
-  return {
-    isDirectoryIgnored: (/** @type {string} */ p) => configs.isDirectoryIgnored(p),
-    getConfig: (/** @type {string} */ p) => configs.getConfig(p),
-  };
 }
 
 /**
@@ -101,7 +90,7 @@ describe('configArrayFindFiles', () => {
 
     const filePaths = await configArrayFindFiles({
       basePath: fixtureBasic,
-      configLoader: toConfigLoader(configs),
+      configLoader: configsToLoader(configs),
     });
 
     assert.equal(filePaths.length, 4);
@@ -144,7 +133,7 @@ describe('configArrayFindFiles', () => {
 
     const filePaths = await configArrayFindFiles({
       basePath: fixtureBasic,
-      configLoader: toConfigLoader(configs),
+      configLoader: configsToLoader(configs),
       deepFilter: (entry) => !entry.path.includes('sub'),
     });
 
@@ -158,7 +147,7 @@ describe('configArrayFindFiles', () => {
 
     const filePaths = await configArrayFindFiles({
       basePath: fixtureBasic,
-      configLoader: toConfigLoader(configs),
+      configLoader: configsToLoader(configs),
       entryFilter: (entry) => entry.path.endsWith('.js'),
     });
 
@@ -267,7 +256,7 @@ describe('configArrayFindFiles', () => {
   it('should follow symlinks with configLoader when followSymbolicLinks is true', async function () {
     await withSymlinkFixture(this, async (symlinkFixture) => {
       const configs = await createTestConfigs(symlinkFixture);
-      const filePaths = await configArrayFindFiles({ basePath: symlinkFixture, configLoader: toConfigLoader(configs), followSymbolicLinks: true });
+      const filePaths = await configArrayFindFiles({ basePath: symlinkFixture, configLoader: configsToLoader(configs), followSymbolicLinks: true });
       assert.equal(filePaths.length, 2);
       assert.ok(filePaths.some(f => f.endsWith('nested.js')));
       assert.ok(filePaths.some(f => f.endsWith('deep-nested.md')));
@@ -295,7 +284,7 @@ describe('configArrayFindFiles', () => {
     ac.abort();
 
     await assert.rejects(
-      () => configArrayFindFiles({ basePath: fixtureBasic, configLoader: toConfigLoader(configs), signal: ac.signal }),
+      () => configArrayFindFiles({ basePath: fixtureBasic, configLoader: configsToLoader(configs), signal: ac.signal }),
       { name: 'AbortError' }
     );
   });
@@ -320,7 +309,7 @@ describe('configArrayFindFiles', () => {
     try {
       await configArrayFindFiles({
         basePath: path.join(testDir, 'fixtures/nonexistent-for-error'),
-        configLoader: toConfigLoader(configs),
+        configLoader: configsToLoader(configs),
         errorFilter: () => false,
       });
     } catch {

@@ -3,9 +3,9 @@ import { stat } from 'node:fs/promises';
 /** @import { ConfigArray } from '@eslint/config-array' */
 /** @import { WalkEntry } from './lib/async-walk.js' */
 
-import { asyncWalk as asyncWalkImpl } from './lib/async-walk.js';
-
-export { asyncWalk } from './lib/async-walk.js';
+import { asyncWalk } from './lib/async-walk.js';
+// eslint-disable-next-line unicorn/prefer-export-from -- need local binding for configArrayFindFiles
+export { asyncWalk };
 
 /**
  * @typedef {object} ConfigLoader
@@ -71,7 +71,7 @@ export async function configArrayFindFiles (options) {
 
   const loader = configLoader || configsToLoader(/** @type {ConfigArray} */ (configs));
 
-  return asyncWalkImpl({
+  return asyncWalk({
     basePath,
     deepFilter: async (entry) => {
       if (deepFilter && !deepFilter(entry)) {

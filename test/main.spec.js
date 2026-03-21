@@ -72,8 +72,8 @@ describe('configArrayFindFiles', () => {
     filePaths.should.have.length(4);
     filePaths[0]?.should.endWith('file1.js');
     filePaths[1]?.should.endWith('file2.md');
-    filePaths[2]?.should.endWith('nested.js');
-    filePaths[3]?.should.endWith('deep-nested.md');
+    filePaths[2]?.should.endWith('deep-nested.md');
+    filePaths[3]?.should.endWith('nested.js');
   });
 
   it('should find nested files with configLoader', async () => {

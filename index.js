@@ -1,8 +1,6 @@
 import { opendir, stat } from 'node:fs/promises';
 import path from 'node:path';
 
-import fswalk from '@nodelib/fs.walk';
-
 /**
  * @typedef {'ignored' | 'external' | 'unconfigured' | 'matched'} ConfigStatus
  */
@@ -15,14 +13,21 @@ import fswalk from '@nodelib/fs.walk';
  */
 
 /**
+ * @typedef {object} WalkEntry
+ * @property {string} path The full path of the entry.
+ * @property {import('node:fs').Dirent} dirent The directory entry.
+ * @property {string} name The name of the entry.
+ */
+
+/**
  * Recursively walks a directory tree, applying async filter functions.
  *
  * @param {string} basePath The directory to walk.
- * @param {(entry: import('@nodelib/fs.walk').Entry) => boolean | Promise<boolean>} deepFilter Filter for directory traversal.
- * @param {(entry: import('@nodelib/fs.walk').Entry) => boolean | Promise<boolean>} entryFilter Filter for file inclusion.
+ * @param {(entry: WalkEntry) => boolean | Promise<boolean>} deepFilter Filter for directory traversal.
+ * @param {(entry: WalkEntry) => boolean | Promise<boolean>} entryFilter Filter for file inclusion.
  * @param {boolean} followSymbolicLinks Whether to follow symbolic links.
  * @param {AbortSignal} [signal] An AbortSignal to cancel the traversal.
- * @param {import('@nodelib/fs.walk').ErrorFilterFunction} [errorFilter] Optional function to filter errors. Return true to skip the error.
+ * @param {(error: NodeJS.ErrnoException) => boolean} [errorFilter] Optional function to filter errors. Return true to skip the error.
  * @returns {Promise<string[]>} An array of matching file paths.
  */
 async function asyncWalk (basePath, deepFilter, entryFilter, followSymbolicLinks, signal, errorFilter) {
@@ -50,7 +55,7 @@ async function asyncWalk (basePath, deepFilter, entryFilter, followSymbolicLinks
       for await (const dirent of dir) {
         const fullPath = path.join(dirPath, dirent.name);
 
-        /** @type {import('@nodelib/fs.walk').Entry} */
+        /** @type {WalkEntry} */
         const entry = { path: fullPath, dirent, name: dirent.name };
 
         // eslint-disable-next-line security/detect-non-literal-fs-filename -- fullPath is derived from walked directory
@@ -85,11 +90,11 @@ async function asyncWalk (basePath, deepFilter, entryFilter, followSymbolicLinks
  * @param {string} options.basePath The directory to search.
  * @param {import('@eslint/config-array').ConfigArray} [options.configs] The config array to use for determining what to ignore.
  * @param {ConfigLoader} [options.configLoader] A config loader with async-capable isDirectoryIgnored/getConfig methods. Alternative to configs.
- * @param {import('@nodelib/fs.walk').DeepFilterFunction} [options.deepFilter] Optional function that indicates whether the directory will be read deep or not.
- * @param {import('@nodelib/fs.walk').EntryFilterFunction} [options.entryFilter] Optional function that indicates whether the entry will be included to results or not.
+ * @param {(entry: WalkEntry) => boolean} [options.deepFilter] Optional function that indicates whether the directory will be read deep or not.
+ * @param {(entry: WalkEntry) => boolean} [options.entryFilter] Optional function that indicates whether the entry will be included to results or not.
  * @param {boolean} [options.followSymbolicLinks] Follow symbolic links when walking directories. Default: false.
  * @param {AbortSignal} [options.signal] An AbortSignal to cancel the traversal.
- * @param {import('@nodelib/fs.walk').ErrorFilterFunction} [options.errorFilter] Optional function to filter errors during traversal. Return true to skip the error and continue.
+ * @param {(error: NodeJS.ErrnoException) => boolean} [options.errorFilter] Optional function to filter errors during traversal. Return true to skip the error and continue.
  * @returns {Promise<Array<string>>} An array of matching file paths or an empty array if there are no matches.
  */
 export async function configArrayFindFiles (options) {
@@ -123,92 +128,25 @@ export async function configArrayFindFiles (options) {
     getConfigStatus: (/** @type {string} */ p) => /** @type {import('./index.js').ConfigStatus} */ (typedConfigs.getConfigStatus(p)),
   });
 
-  // Use asyncWalk when configLoader is provided or when followSymbolicLinks is needed
-  // (@nodelib/fs.walk doesn't properly traverse into symlinked directories)
-  if (configLoader || followSymbolicLinks) {
-    return asyncWalk(
-      basePath,
-      async (entry) => {
-        if (deepFilter && !deepFilter(entry)) {
-          return false;
-        }
-        return !(await resolvedConfigs.isDirectoryIgnored(entry.path));
-      },
-      async (entry) => {
-        if (entry.dirent.isDirectory()) {
-          return false;
-        }
-        if (entryFilter && !entryFilter(entry)) {
-          return false;
-        }
-        return (await resolvedConfigs.getConfig(entry.path)) !== undefined;
-      },
-      Boolean(followSymbolicLinks),
-      signal,
-      errorFilter
-    );
-  }
-
-  /** @type {import('@nodelib/fs.walk').Entry[]} */
-  const filePaths = (await new Promise((resolve, reject) => {
-    let promiseRejected = false;
-
-    /**
-     * Wraps a boolean-returning filter function. The wrapped function will reject the promise if an error occurs.
-     *
-     * @param {import('@nodelib/fs.walk').DeepFilterFunction | import('@nodelib/fs.walk').EntryFilterFunction} filter A filter function to wrap.
-     * @returns {import('@nodelib/fs.walk').DeepFilterFunction | import('@nodelib/fs.walk').EntryFilterFunction} A function similar to the wrapped filter that rejects the promise if an error occurs.
-     */
-    function wrapFilter (filter) {
-      /** @type {import('@nodelib/fs.walk').DeepFilterFunction | import('@nodelib/fs.walk').EntryFilterFunction} */
-      const result = (...args) => {
-        // No need to run the filter if an error has been thrown.
-        if (!promiseRejected) {
-          try {
-            return filter(...args);
-          } catch (err) {
-            promiseRejected = true;
-            reject(err);
-          }
-        }
+  return asyncWalk(
+    basePath,
+    async (entry) => {
+      if (deepFilter && !deepFilter(entry)) {
         return false;
-      };
-
-      return result;
-    }
-
-    fswalk.walk(
-      basePath,
-      {
-        ...(signal ? { signal } : {}),
-        ...(errorFilter ? { errorFilter } : {}),
-        deepFilter: wrapFilter(entry => {
-          if (deepFilter && !deepFilter(entry)) {
-            return false;
-          }
-          return !resolvedConfigs.isDirectoryIgnored(entry.path);
-        }),
-        entryFilter: wrapFilter(entry => {
-          // entries may be directories or files so filter out directories
-          if (entry.dirent.isDirectory()) {
-            return false;
-          }
-          if (entryFilter && !entryFilter(entry)) {
-            return false;
-          }
-          return resolvedConfigs.getConfig(entry.path) !== undefined;
-        }),
-      },
-      (error, entries) => {
-        // If the promise is already rejected, calling `resolve` or `reject` will do nothing.
-        if (error) {
-          reject(error);
-        } else {
-          resolve(entries);
-        }
       }
-    );
-  }));
-
-  return filePaths.map(entry => entry.path);
+      return !(await resolvedConfigs.isDirectoryIgnored(entry.path));
+    },
+    async (entry) => {
+      if (entry.dirent.isDirectory()) {
+        return false;
+      }
+      if (entryFilter && !entryFilter(entry)) {
+        return false;
+      }
+      return (await resolvedConfigs.getConfig(entry.path)) !== undefined;
+    },
+    Boolean(followSymbolicLinks),
+    signal,
+    errorFilter
+  );
 }

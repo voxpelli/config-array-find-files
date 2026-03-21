@@ -3,5 +3,8 @@
   "entry": [
     "index.d.ts"
   ],
+  "ignore": [
+    "test/fixtures/**"
+  ],
   "ignoreDependencies": ["@types/minimatch"]
 }

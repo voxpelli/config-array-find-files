@@ -11,15 +11,18 @@ chai.use(chaiString);
 
 chai.should();
 
+const testDir = dirname(import.meta.url);
+
 /**
  * @param {string} basePath
+ * @param {string[][]} [patterns]
  * @returns {Promise<import('@eslint/config-array').ConfigArray>}
  */
-async function createTestConfigs (basePath) {
-  const configs = new ConfigArray([
-    { files: ['*.js'] },
-    { files: ['*.md'] },
-  ], { basePath });
+async function createTestConfigs (basePath, patterns) {
+  const configs = new ConfigArray(
+    (patterns || [['**/*.js'], ['**/*.md']]).map(files => ({ files })),
+    { basePath }
+  );
 
   await configs.normalize();
 
@@ -27,69 +30,128 @@ async function createTestConfigs (basePath) {
 }
 
 /**
- * @param {string[]} filePaths
+ * @param {import('@eslint/config-array').ConfigArray} configs
+ * @returns {import('../index.js').ConfigLoader}
  */
-function assertExpectedFiles (filePaths) {
-  filePaths[0]?.should.endWith('CHANGELOG.md');
-  filePaths[1]?.should.endWith('README.md');
-  filePaths[2]?.should.endWith('eslint.config.js');
-  filePaths[3]?.should.endWith('index.js');
-
-  filePaths.should.have.length(4);
+function toConfigLoader (configs) {
+  return {
+    isDirectoryIgnored: (/** @type {string} */ p) => configs.isDirectoryIgnored(p),
+    getConfig: (/** @type {string} */ p) => configs.getConfig(p),
+  };
 }
 
 describe('configArrayFindFiles', () => {
   /** @type {string} */
-  let basePath;
+  let fixtureBasic;
+  /** @type {string} */
+  let projectRoot;
 
   before(() => {
-    basePath = path.join(dirname(import.meta.url), '../');
+    fixtureBasic = path.join(testDir, 'fixtures/basic');
+    projectRoot = path.join(testDir, '../');
   });
 
-  it('should find files with configs', async () => {
-    const configs = await createTestConfigs(basePath);
+  // -- Fixture-based tests --
+
+  it('should find files in flat directory with configs', async () => {
+    const configs = await createTestConfigs(fixtureBasic, [['*.js'], ['*.md']]);
+
+    const filePaths = await configArrayFindFiles({ basePath: fixtureBasic, configs });
+
+    filePaths.should.have.length(2);
+    filePaths[0]?.should.endWith('file1.js');
+    filePaths[1]?.should.endWith('file2.md');
+  });
+
+  it('should find nested files with ** glob patterns', async () => {
+    const configs = await createTestConfigs(fixtureBasic);
+
+    const filePaths = await configArrayFindFiles({ basePath: fixtureBasic, configs });
+
+    filePaths.should.have.length(4);
+    filePaths[0]?.should.endWith('file1.js');
+    filePaths[1]?.should.endWith('file2.md');
+    filePaths[2]?.should.endWith('nested.js');
+    filePaths[3]?.should.endWith('deep-nested.md');
+  });
+
+  it('should find nested files with configLoader', async () => {
+    const configs = await createTestConfigs(fixtureBasic);
 
     const filePaths = await configArrayFindFiles({
-      basePath,
+      basePath: fixtureBasic,
+      configLoader: toConfigLoader(configs),
+    });
+
+    filePaths.should.have.length(4);
+    filePaths[0]?.should.endWith('file1.js');
+    filePaths[1]?.should.endWith('file2.md');
+    filePaths[2]?.should.endWith('deep-nested.md');
+    filePaths[3]?.should.endWith('nested.js');
+  });
+
+  it('should respect deepFilter to skip subdirectories', async () => {
+    const configs = await createTestConfigs(fixtureBasic);
+
+    const filePaths = await configArrayFindFiles({
+      basePath: fixtureBasic,
       configs,
+      deepFilter: (entry) => !entry.path.includes('sub'),
     });
 
-    assertExpectedFiles(filePaths);
+    filePaths.should.have.length(2);
+    filePaths[0]?.should.endWith('file1.js');
+    filePaths[1]?.should.endWith('file2.md');
   });
 
-  it('should find files with sync configLoader', async () => {
-    const configs = await createTestConfigs(basePath);
+  it('should respect entryFilter with configs', async () => {
+    const configs = await createTestConfigs(fixtureBasic);
 
     const filePaths = await configArrayFindFiles({
-      basePath,
-      configLoader: {
-        isDirectoryIgnored: (/** @type {string} */ p) => configs.isDirectoryIgnored(p),
-        getConfig: (/** @type {string} */ p) => configs.getConfig(p),
-      },
+      basePath: fixtureBasic,
+      configs,
+      entryFilter: (entry) => entry.path.endsWith('.js'),
     });
 
-    assertExpectedFiles(filePaths);
+    filePaths.should.have.length(2);
+    filePaths[0]?.should.endWith('file1.js');
+    filePaths[1]?.should.endWith('nested.js');
   });
 
-  it('should find files with async configLoader', async () => {
-    const configs = await createTestConfigs(basePath);
+  it('should respect deepFilter with configLoader', async () => {
+    const configs = await createTestConfigs(fixtureBasic);
 
     const filePaths = await configArrayFindFiles({
-      basePath,
-      configLoader: {
-        isDirectoryIgnored: async (/** @type {string} */ p) => configs.isDirectoryIgnored(p),
-        getConfig: async (/** @type {string} */ p) => configs.getConfig(p),
-      },
+      basePath: fixtureBasic,
+      configLoader: toConfigLoader(configs),
+      deepFilter: (entry) => !entry.path.includes('sub'),
     });
 
-    assertExpectedFiles(filePaths);
+    filePaths.should.have.length(2);
+    filePaths[0]?.should.endWith('file1.js');
+    filePaths[1]?.should.endWith('file2.md');
   });
+
+  it('should respect entryFilter with configLoader', async () => {
+    const configs = await createTestConfigs(fixtureBasic);
+
+    const filePaths = await configArrayFindFiles({
+      basePath: fixtureBasic,
+      configLoader: toConfigLoader(configs),
+      entryFilter: (entry) => entry.path.endsWith('.js'),
+    });
+
+    filePaths.should.have.length(2);
+    filePaths[0]?.should.endWith('file1.js');
+    filePaths[1]?.should.endWith('nested.js');
+  });
+  // -- Edge cases --
 
   it('should return empty array for non-existent basePath', async () => {
-    const configs = await createTestConfigs(basePath);
+    const configs = await createTestConfigs(fixtureBasic);
 
     const filePaths = await configArrayFindFiles({
-      basePath: path.join(basePath, 'non-existent-directory'),
+      basePath: path.join(fixtureBasic, 'non-existent'),
       configs,
     });
 
@@ -97,79 +159,19 @@ describe('configArrayFindFiles', () => {
   });
 
   it('should return empty array when basePath is a file', async () => {
-    const configs = await createTestConfigs(basePath);
+    const configs = await createTestConfigs(fixtureBasic);
 
     const filePaths = await configArrayFindFiles({
-      basePath: path.join(basePath, 'index.js'),
+      basePath: path.join(fixtureBasic, 'file1.js'),
       configs,
     });
 
     filePaths.should.have.length(0);
   });
 
-  it('should respect deepFilter with configs', async () => {
-    const configs = await createTestConfigs(basePath);
-
-    const filePaths = await configArrayFindFiles({
-      basePath,
-      configs,
-      deepFilter: (entry) => !entry.path.includes('node_modules'),
-    });
-
-    assertExpectedFiles(filePaths);
-  });
-
-  it('should respect entryFilter with configs', async () => {
-    const configs = await createTestConfigs(basePath);
-
-    const filePaths = await configArrayFindFiles({
-      basePath,
-      configs,
-      entryFilter: (entry) => entry.path.endsWith('.js'),
-    });
-
-    filePaths.should.have.length(2);
-    filePaths[0]?.should.endWith('eslint.config.js');
-    filePaths[1]?.should.endWith('index.js');
-  });
-
-  it('should respect deepFilter with configLoader', async () => {
-    const configs = await createTestConfigs(basePath);
-
-    const filePaths = await configArrayFindFiles({
-      basePath,
-      configLoader: {
-        isDirectoryIgnored: (/** @type {string} */ p) => configs.isDirectoryIgnored(p),
-        getConfig: (/** @type {string} */ p) => configs.getConfig(p),
-      },
-      deepFilter: (entry) => !entry.path.includes('node_modules'),
-    });
-
-    assertExpectedFiles(filePaths);
-  });
-
-  it('should respect entryFilter with configLoader', async () => {
-    const configs = await createTestConfigs(basePath);
-
-    const filePaths = await configArrayFindFiles({
-      basePath,
-      configLoader: {
-        isDirectoryIgnored: (/** @type {string} */ p) => configs.isDirectoryIgnored(p),
-        getConfig: (/** @type {string} */ p) => configs.getConfig(p),
-      },
-      entryFilter: (entry) => entry.path.endsWith('.js'),
-    });
-
-    filePaths.should.have.length(2);
-    filePaths[0]?.should.endWith('eslint.config.js');
-    filePaths[1]?.should.endWith('index.js');
-  });
-
   it('should throw TypeError when neither configs nor configLoader provided', async () => {
     try {
-      await configArrayFindFiles({
-        basePath,
-      });
+      await configArrayFindFiles({ basePath: fixtureBasic });
       throw new Error('should have thrown');
     } catch (/** @type {any} */ err) {
       err.should.be.instanceOf(TypeError);
@@ -183,7 +185,7 @@ describe('configArrayFindFiles', () => {
 
     try {
       await configArrayFindFiles({
-        basePath,
+        basePath: projectRoot,
         configLoader: {
           isDirectoryIgnored: () => { throw error; },
           // eslint-disable-next-line unicorn/no-useless-undefined -- needed to match ConfigLoader type
@@ -197,12 +199,12 @@ describe('configArrayFindFiles', () => {
   });
 
   it('should propagate configLoader.getConfig rejections', async () => {
-    const configs = await createTestConfigs(basePath);
+    const configs = await createTestConfigs(projectRoot);
     const error = new Error('getConfig failed');
 
     try {
       await configArrayFindFiles({
-        basePath,
+        basePath: projectRoot,
         configLoader: {
           isDirectoryIgnored: (/** @type {string} */ p) => configs.isDirectoryIgnored(p),
           getConfig: () => Promise.reject(error),
@@ -212,5 +214,19 @@ describe('configArrayFindFiles', () => {
     } catch (/** @type {any} */ err) {
       err.should.equal(error);
     }
+  });
+
+  it('should find files with async configLoader', async () => {
+    const configs = await createTestConfigs(fixtureBasic);
+
+    const filePaths = await configArrayFindFiles({
+      basePath: fixtureBasic,
+      configLoader: {
+        isDirectoryIgnored: async (/** @type {string} */ p) => configs.isDirectoryIgnored(p),
+        getConfig: async (/** @type {string} */ p) => configs.getConfig(p),
+      },
+    });
+
+    filePaths.should.have.length(4);
   });
 });

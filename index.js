@@ -15,9 +15,10 @@ import fswalk from '@nodelib/fs.walk';
  * @param {string} basePath The directory to walk.
  * @param {(entry: import('@nodelib/fs.walk').Entry) => boolean | Promise<boolean>} deepFilter Filter for directory traversal.
  * @param {(entry: import('@nodelib/fs.walk').Entry) => boolean | Promise<boolean>} entryFilter Filter for file inclusion.
+ * @param {boolean} followSymbolicLinks Whether to follow symbolic links.
  * @returns {Promise<string[]>} An array of matching file paths.
  */
-async function asyncWalk (basePath, deepFilter, entryFilter) {
+async function asyncWalk (basePath, deepFilter, entryFilter, followSymbolicLinks) {
   /** @type {string[]} */
   const results = [];
 
@@ -42,7 +43,11 @@ async function asyncWalk (basePath, deepFilter, entryFilter) {
         /** @type {import('@nodelib/fs.walk').Entry} */
         const entry = { path: fullPath, dirent, name: dirent.name };
 
-        if (dirent.isDirectory()) {
+        // eslint-disable-next-line security/detect-non-literal-fs-filename -- fullPath is derived from walked directory
+        const resolvedStat = followSymbolicLinks && dirent.isSymbolicLink() ? await stat(fullPath).catch(() => {}) : undefined;
+        const isDir = dirent.isDirectory() || resolvedStat?.isDirectory();
+
+        if (isDir) {
           if (await deepFilter(entry)) {
             await walk(fullPath);
           }
@@ -72,6 +77,7 @@ async function asyncWalk (basePath, deepFilter, entryFilter) {
  * @param {ConfigLoader} [options.configLoader] A config loader with async-capable isDirectoryIgnored/getConfig methods. Alternative to configs.
  * @param {import('@nodelib/fs.walk').DeepFilterFunction} [options.deepFilter] Optional function that indicates whether the directory will be read deep or not.
  * @param {import('@nodelib/fs.walk').EntryFilterFunction} [options.entryFilter] Optional function that indicates whether the entry will be included to results or not.
+ * @param {boolean} [options.followSymbolicLinks] Follow symbolic links when walking directories. Default: false.
  * @returns {Promise<Array<string>>} An array of matching file paths or an empty array if there are no matches.
  */
 export async function configArrayFindFiles (options) {
@@ -81,6 +87,7 @@ export async function configArrayFindFiles (options) {
     configs,
     deepFilter,
     entryFilter,
+    followSymbolicLinks,
   } = options;
 
   if (!configs && !configLoader) {
@@ -94,14 +101,22 @@ export async function configArrayFindFiles (options) {
     return [];
   }
 
-  if (configLoader) {
+  // Determine the config source — either configLoader or a wrapper around configs
+  const resolvedConfigs = configLoader || /** @type {import('./index.js').ConfigLoader} */ ({
+    isDirectoryIgnored: (/** @type {string} */ p) => /** @type {import('@eslint/config-array').ConfigArray} */ (configs).isDirectoryIgnored(p),
+    getConfig: (/** @type {string} */ p) => /** @type {import('@eslint/config-array').ConfigArray} */ (configs).getConfig(p),
+  });
+
+  // Use asyncWalk when configLoader is provided or when followSymbolicLinks is needed
+  // (@nodelib/fs.walk doesn't properly traverse into symlinked directories)
+  if (configLoader || followSymbolicLinks) {
     return asyncWalk(
       basePath,
       async (entry) => {
         if (deepFilter && !deepFilter(entry)) {
           return false;
         }
-        return !(await configLoader.isDirectoryIgnored(entry.path));
+        return !(await resolvedConfigs.isDirectoryIgnored(entry.path));
       },
       async (entry) => {
         if (entry.dirent.isDirectory()) {
@@ -110,13 +125,11 @@ export async function configArrayFindFiles (options) {
         if (entryFilter && !entryFilter(entry)) {
           return false;
         }
-        return (await configLoader.getConfig(entry.path)) !== undefined;
-      }
+        return (await resolvedConfigs.getConfig(entry.path)) !== undefined;
+      },
+      Boolean(followSymbolicLinks)
     );
   }
-
-  // At this point configLoader is falsy, so configs is guaranteed defined by the validation above
-  const resolvedConfigs = /** @type {import('@eslint/config-array').ConfigArray} */ (configs);
 
   /** @type {import('@nodelib/fs.walk').Entry[]} */
   const filePaths = (await new Promise((resolve, reject) => {

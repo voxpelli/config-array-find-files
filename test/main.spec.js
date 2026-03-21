@@ -1,3 +1,4 @@
+import { mkdir, rm, symlink } from 'node:fs/promises';
 import path from 'node:path';
 
 import { ConfigArray } from '@eslint/config-array';
@@ -228,5 +229,89 @@ describe('configArrayFindFiles', () => {
     });
 
     filePaths.should.have.length(4);
+  });
+
+  // -- Symlink tests --
+
+  it('should skip symlinked directories by default', async function () {
+    const symlinkFixture = path.join(testDir, 'fixtures/symlink-test');
+
+    await mkdir(symlinkFixture, { recursive: true });
+
+    try {
+      await symlink(path.join(testDir, 'fixtures/basic/sub'), path.join(symlinkFixture, 'linked-sub'));
+    } catch {
+      // Symlinks may not be supported (e.g. Windows without privileges)
+      return this.skip();
+    }
+
+    try {
+      const configs = await createTestConfigs(symlinkFixture);
+
+      const filePaths = await configArrayFindFiles({
+        basePath: symlinkFixture,
+        configs,
+      });
+
+      filePaths.should.have.length(0);
+    } finally {
+      await rm(symlinkFixture, { recursive: true });
+    }
+  });
+
+  it('should follow symlinked directories when followSymbolicLinks is true', async function () {
+    const symlinkFixture = path.join(testDir, 'fixtures/symlink-test');
+
+    await mkdir(symlinkFixture, { recursive: true });
+
+    try {
+      await symlink(path.join(testDir, 'fixtures/basic/sub'), path.join(symlinkFixture, 'linked-sub'));
+    } catch {
+      return this.skip();
+    }
+
+    try {
+      const configs = await createTestConfigs(symlinkFixture);
+
+      const filePaths = await configArrayFindFiles({
+        basePath: symlinkFixture,
+        configs,
+        followSymbolicLinks: true,
+      });
+
+      filePaths.should.have.length(2);
+      filePaths.some(f => f.endsWith('nested.js')).should.equal(true);
+      filePaths.some(f => f.endsWith('deep-nested.md')).should.equal(true);
+    } finally {
+      await rm(symlinkFixture, { recursive: true });
+    }
+  });
+
+  it('should follow symlinks with configLoader when followSymbolicLinks is true', async function () {
+    const symlinkFixture = path.join(testDir, 'fixtures/symlink-test');
+
+    await mkdir(symlinkFixture, { recursive: true });
+
+    try {
+      await symlink(path.join(testDir, 'fixtures/basic/sub'), path.join(symlinkFixture, 'linked-sub'));
+    } catch {
+      return this.skip();
+    }
+
+    try {
+      const configs = await createTestConfigs(symlinkFixture);
+
+      const filePaths = await configArrayFindFiles({
+        basePath: symlinkFixture,
+        configLoader: toConfigLoader(configs),
+        followSymbolicLinks: true,
+      });
+
+      filePaths.should.have.length(2);
+      filePaths.some(f => f.endsWith('nested.js')).should.equal(true);
+      filePaths.some(f => f.endsWith('deep-nested.md')).should.equal(true);
+    } finally {
+      await rm(symlinkFixture, { recursive: true });
+    }
   });
 });

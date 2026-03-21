@@ -71,6 +71,7 @@ Exactly one of `configs` or `configLoader` must be provided.
 * `configLoader` — `ConfigLoader` — an async-capable alternative to `configs` (see below)
 * `deepFilter` — optional function that indicates whether the directory will be read deep or not
 * `entryFilter` — optional function that indicates whether the entry will be included to results or not
+* `followSymbolicLinks` — `boolean` — follow symbolic links when walking directories (default: `false`)
 
 #### ConfigLoader
 

@@ -5,6 +5,5 @@
   ],
   "ignore": [
     "test/fixtures/**"
-  ],
-  "ignoreDependencies": ["@types/minimatch"]
+  ]
 }

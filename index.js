@@ -16,7 +16,6 @@ import path from 'node:path';
  * @typedef {object} WalkEntry
  * @property {string} path The full path of the entry.
  * @property {import('node:fs').Dirent} dirent The directory entry.
- * @property {string} name The name of the entry.
  */
 
 /**
@@ -62,7 +61,7 @@ async function asyncWalk (options) {
         const fullPath = path.join(dirPath, dirent.name);
 
         /** @type {WalkEntry} */
-        const entry = { path: fullPath, dirent, name: dirent.name };
+        const entry = { path: fullPath, dirent };
 
         // eslint-disable-next-line security/detect-non-literal-fs-filename -- fullPath is derived from walked directory
         const resolvedStat = followSymbolicLinks && dirent.isSymbolicLink() ? await stat(fullPath).catch(() => {}) : undefined;

@@ -13,6 +13,7 @@
   "engines": {
     "node": "^20.19.0 || ^22.13.0 || >=24"
   },
+  "sideEffects": false,
   "type": "module",
   "exports": {
     ".": {
@@ -46,7 +47,7 @@
     "clean": "run-p clean:*",
     "prepare": "husky",
     "prepublishOnly": "run-s build",
-    "test:mocha": "c8 --all --src index.js --src 'lib/**/*.js' --reporter=lcov --reporter=text node --test 'test/**/*.spec.js'",
+    "test:mocha": "c8 node --test 'test/**/*.spec.js'",
     "test-ci": "run-s test:*",
     "test": "run-s check test:*"
   },

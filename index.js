@@ -20,17 +20,23 @@ import path from 'node:path';
  */
 
 /**
+ * @typedef {object} AsyncWalkOptions
+ * @property {string} basePath The directory to walk.
+ * @property {(entry: WalkEntry) => boolean | Promise<boolean>} deepFilter Filter for directory traversal.
+ * @property {(entry: WalkEntry) => boolean | Promise<boolean>} entryFilter Filter for file inclusion.
+ * @property {boolean} [followSymbolicLinks] Whether to follow symbolic links.
+ * @property {AbortSignal} [signal] An AbortSignal to cancel the traversal.
+ * @property {(error: NodeJS.ErrnoException) => boolean} [errorFilter] Optional function to filter errors. Return true to skip the error.
+ */
+
+/**
  * Recursively walks a directory tree, applying async filter functions.
  *
- * @param {string} basePath The directory to walk.
- * @param {(entry: WalkEntry) => boolean | Promise<boolean>} deepFilter Filter for directory traversal.
- * @param {(entry: WalkEntry) => boolean | Promise<boolean>} entryFilter Filter for file inclusion.
- * @param {boolean} followSymbolicLinks Whether to follow symbolic links.
- * @param {AbortSignal} [signal] An AbortSignal to cancel the traversal.
- * @param {(error: NodeJS.ErrnoException) => boolean} [errorFilter] Optional function to filter errors. Return true to skip the error.
+ * @param {AsyncWalkOptions} options
  * @returns {Promise<string[]>} An array of matching file paths.
  */
-async function asyncWalk (basePath, deepFilter, entryFilter, followSymbolicLinks, signal, errorFilter) {
+async function asyncWalk (options) {
+  const { basePath, deepFilter, entryFilter, errorFilter, followSymbolicLinks, signal } = options;
   /** @type {string[]} */
   const results = [];
 
@@ -128,15 +134,15 @@ export async function configArrayFindFiles (options) {
     getConfigStatus: (/** @type {string} */ p) => /** @type {import('./index.js').ConfigStatus} */ (typedConfigs.getConfigStatus(p)),
   });
 
-  return asyncWalk(
+  return asyncWalk({
     basePath,
-    async (entry) => {
+    deepFilter: async (entry) => {
       if (deepFilter && !deepFilter(entry)) {
         return false;
       }
       return !(await resolvedConfigs.isDirectoryIgnored(entry.path));
     },
-    async (entry) => {
+    entryFilter: async (entry) => {
       if (entry.dirent.isDirectory()) {
         return false;
       }
@@ -145,8 +151,8 @@ export async function configArrayFindFiles (options) {
       }
       return (await resolvedConfigs.getConfig(entry.path)) !== undefined;
     },
-    Boolean(followSymbolicLinks),
-    signal,
-    errorFilter
-  );
+    followSymbolicLinks: Boolean(followSymbolicLinks),
+    ...(signal ? { signal } : {}),
+    ...(errorFilter ? { errorFilter } : {}),
+  });
 }

@@ -53,15 +53,12 @@ async function withSymlinkFixture (ctx, testFn) {
 describe('configArrayFindFiles', () => {
   /** @type {string} */
   let fixtureBasic;
-  /** @type {string} */
-  let projectRoot;
 
   before(() => {
     fixtureBasic = path.join(testDir, 'fixtures/basic');
-    projectRoot = path.join(testDir, '../');
   });
 
-  // -- Fixture-based tests --
+  // -- Core --
 
   it('should find files in flat directory with configs', async () => {
     const configs = await createTestConfigs(fixtureBasic, [['*.js'], ['*.md']]);
@@ -192,7 +189,7 @@ describe('configArrayFindFiles', () => {
 
     await assert.rejects(
       () => configArrayFindFiles({
-        basePath: projectRoot,
+        basePath: fixtureBasic,
         configLoader: {
           isDirectoryIgnored: () => { throw error; },
           // eslint-disable-next-line unicorn/no-useless-undefined -- needed to match ConfigLoader type
@@ -204,12 +201,12 @@ describe('configArrayFindFiles', () => {
   });
 
   it('should propagate configLoader.getConfig rejections', async () => {
-    const configs = await createTestConfigs(projectRoot);
+    const configs = await createTestConfigs(fixtureBasic);
     const error = new Error('getConfig failed');
 
     await assert.rejects(
       () => configArrayFindFiles({
-        basePath: projectRoot,
+        basePath: fixtureBasic,
         configLoader: {
           isDirectoryIgnored: (/** @type {string} */ p) => configs.isDirectoryIgnored(p),
           getConfig: () => Promise.reject(error),
@@ -233,7 +230,7 @@ describe('configArrayFindFiles', () => {
     assert.equal(filePaths.length, 4);
   });
 
-  // -- Symlink tests --
+  // -- Symlinks --
 
   it('should skip symlinked directories by default', async function () {
     await withSymlinkFixture(this, async (symlinkFixture) => {
@@ -263,7 +260,7 @@ describe('configArrayFindFiles', () => {
     });
   });
 
-  // -- AbortSignal tests --
+  // -- Abort --
 
   it('should abort traversal with pre-aborted signal (configs)', async () => {
     const configs = await createTestConfigs(fixtureBasic);
@@ -289,7 +286,7 @@ describe('configArrayFindFiles', () => {
     );
   });
 
-  // -- errorFilter tests --
+  // -- Error handling --
 
   it('should accept errorFilter with configs', async () => {
     const configs = await createTestConfigs(fixtureBasic);

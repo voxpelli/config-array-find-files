@@ -20,8 +20,8 @@ import { configArrayFindFiles } from '@voxpelli/config-array-find-files';
 const basePath = new URL('.', import.meta.url).pathname;
 
 const configs = new ConfigArray([
-  { files: ['*.js'] },
-  { files: ['*.md'] },
+  { files: ['**/*.js'] },
+  { files: ['**/*.md'] },
 ], { basePath });
 
 await configs.normalize();
@@ -42,9 +42,38 @@ import { configArrayFindFiles } from '@voxpelli/config-array-find-files';
 const filePaths = await configArrayFindFiles({
   basePath: '/path/to/project',
   configLoader: {
-    isDirectoryIgnored: async (dirPath) => { /* ... */ },
-    getConfig: async (filePath) => { /* ... */ },
+    isDirectoryIgnored: async (dirPath) => {
+      const configs = await loadConfigForDir(dirPath);
+      return configs.isDirectoryIgnored(dirPath);
+    },
+    getConfig: async (filePath) => {
+      const configs = await loadConfigForDir(path.dirname(filePath));
+      return configs.getConfig(filePath);
+    },
   },
+});
+```
+
+### Cancellable search with AbortSignal
+
+```javascript
+const ac = new AbortController();
+setTimeout(() => ac.abort(), 5000); // 5s timeout
+
+const filePaths = await configArrayFindFiles({
+  basePath,
+  configs,
+  signal: ac.signal,
+});
+```
+
+### Following symbolic links
+
+```javascript
+const filePaths = await configArrayFindFiles({
+  basePath,
+  configs,
+  followSymbolicLinks: true,
 });
 ```
 
@@ -71,14 +100,17 @@ Exactly one of `configs` or `configLoader` must be provided.
 * `configLoader` — `ConfigLoader` — an async-capable alternative to `configs` (see below)
 * `deepFilter` — optional function that indicates whether the directory will be read deep or not
 * `entryFilter` — optional function that indicates whether the entry will be included to results or not
+* `errorFilter` — optional function to filter errors during traversal; return `true` to skip the error and continue
 * `followSymbolicLinks` — `boolean` — follow symbolic links when walking directories (default: `false`)
+* `signal` — `AbortSignal` — cancel the traversal; throws `AbortError` when aborted
 
 #### ConfigLoader
 
-An object with two methods, both of which may return a value or a `Promise`:
+An object with methods for config resolution, all of which may return a value or a `Promise`:
 
-* `isDirectoryIgnored(dirPath: string)` — returns `boolean` or `Promise<boolean>` — whether the directory should be skipped
-* `getConfig(filePath: string)` — returns `object | undefined` or `Promise<object | undefined>` — the config for the file, or `undefined` if the file has no matching config
+* `isDirectoryIgnored(dirPath: string)` — returns `boolean` — whether the directory should be skipped
+* `getConfig(filePath: string)` — returns `object | undefined` — the config for the file, or `undefined` if the file has no matching config
+* `getConfigStatus(filePath: string)` *(optional)* — returns `ConfigStatus` (`"ignored"` | `"external"` | `"unconfigured"` | `"matched"`) — the reason a file was included or excluded
 
 #### Returns
 

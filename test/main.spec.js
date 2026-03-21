@@ -317,4 +317,39 @@ describe('configArrayFindFiles', () => {
       // Expected if the error propagates — basePath guard may return [] first
     }
   });
+
+  it('should skip unreadable directories when errorFilter returns true', async (t) => {
+    // Only works on Unix where chmod is effective
+    const unreadableDir = path.join(testDir, 'fixtures/unreadable-test');
+    const subDir = path.join(unreadableDir, 'blocked');
+
+    await mkdir(subDir, { recursive: true });
+
+    try {
+      const { chmod } = await import('node:fs/promises');
+
+      await chmod(subDir, 0o000);
+
+      const configs = await createTestConfigs(unreadableDir);
+      /** @type {NodeJS.ErrnoException[]} */
+      const errors = [];
+
+      const filePaths = await configArrayFindFiles({
+        basePath: unreadableDir,
+        configs,
+        errorFilter: (err) => { errors.push(err); return true; },
+      });
+
+      assertFileCount(filePaths, 0);
+      assert.ok(errors.length > 0, 'errorFilter should have been called');
+      assert.equal(errors[0]?.code, 'EACCES');
+    } catch {
+      // chmod may not work (e.g. running as root, or on Windows)
+      t.skip('chmod not effective on this platform');
+    } finally {
+      const { chmod } = await import('node:fs/promises');
+      await chmod(subDir, 0o755).catch(() => {});
+      await rm(unreadableDir, { recursive: true }).catch(() => {});
+    }
+  });
 });

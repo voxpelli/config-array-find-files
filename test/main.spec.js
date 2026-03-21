@@ -316,35 +316,4 @@ describe('configArrayFindFiles', () => {
       // Expected if the error propagates — basePath guard may return [] first
     }
   });
-
-  // -- getConfigStatus tests --
-
-  it('should expose getConfigStatus via configLoader entryFilter', async () => {
-    const configs = new ConfigArray([
-      { ignores: ['ignored/**'] },
-      { files: ['**/*.js'] },
-    ], { basePath: fixtureBasic });
-
-    await configs.normalize();
-
-    /** @type {Map<string, string>} */
-    const statuses = new Map();
-
-    const filePaths = await configArrayFindFiles({
-      basePath: fixtureBasic,
-      configLoader: {
-        isDirectoryIgnored: (/** @type {string} */ p) => configs.isDirectoryIgnored(p),
-        getConfig: (/** @type {string} */ p) => configs.getConfig(p),
-        getConfigStatus: (/** @type {string} */ p) => /** @type {import('../index.js').ConfigStatus} */ (configs.getConfigStatus(p)),
-      },
-      entryFilter: (entry) => {
-        const status = /** @type {import('../index.js').ConfigStatus} */ (configs.getConfigStatus(entry.path));
-        statuses.set(entry.path, status);
-        return true;
-      },
-    });
-
-    assert.equal(filePaths.length, 2);
-    assert.ok(statuses.size > 0);
-  });
 });

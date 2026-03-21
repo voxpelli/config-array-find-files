@@ -110,7 +110,6 @@ An object with methods for config resolution, all of which may return a value or
 
 * `isDirectoryIgnored(dirPath: string)` — returns `boolean` — whether the directory should be skipped
 * `getConfig(filePath: string)` — returns `object | undefined` — the config for the file, or `undefined` if the file has no matching config
-* `getConfigStatus(filePath: string)` *(optional)* — returns `ConfigStatus` (`"ignored"` | `"external"` | `"unconfigured"` | `"matched"`) — the reason a file was included or excluded
 
 #### Returns
 

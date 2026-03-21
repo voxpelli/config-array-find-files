@@ -2,14 +2,9 @@ import { opendir, stat } from 'node:fs/promises';
 import path from 'node:path';
 
 /**
- * @typedef {'ignored' | 'external' | 'unconfigured' | 'matched'} ConfigStatus
- */
-
-/**
  * @typedef {object} ConfigLoader
  * @property {(dirPath: string) => boolean | Promise<boolean>} isDirectoryIgnored Check if a directory is ignored.
  * @property {(filePath: string) => object | undefined | Promise<object | undefined>} getConfig Get config for a file. Returns undefined if file has no matching config.
- * @property {(filePath: string) => ConfigStatus | Promise<ConfigStatus>} [getConfigStatus] Optional. Returns the config status for a file: "ignored", "external", "unconfigured", or "matched".
  */
 
 /**
@@ -95,7 +90,6 @@ export function configsToLoader (configs) {
   return {
     isDirectoryIgnored: (/** @type {string} */ p) => configs.isDirectoryIgnored(p),
     getConfig: (/** @type {string} */ p) => configs.getConfig(p),
-    getConfigStatus: (/** @type {string} */ p) => /** @type {ConfigStatus} */ (configs.getConfigStatus(p)),
   };
 }
 

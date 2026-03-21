@@ -107,6 +107,77 @@ describe('configArrayFindFiles', () => {
     filePaths.should.have.length(0);
   });
 
+  it('should respect deepFilter with configs', async () => {
+    const configs = await createTestConfigs(basePath);
+
+    const filePaths = await configArrayFindFiles({
+      basePath,
+      configs,
+      deepFilter: (entry) => !entry.path.includes('node_modules'),
+    });
+
+    assertExpectedFiles(filePaths);
+  });
+
+  it('should respect entryFilter with configs', async () => {
+    const configs = await createTestConfigs(basePath);
+
+    const filePaths = await configArrayFindFiles({
+      basePath,
+      configs,
+      entryFilter: (entry) => entry.path.endsWith('.js'),
+    });
+
+    filePaths.should.have.length(2);
+    filePaths[0]?.should.endWith('eslint.config.js');
+    filePaths[1]?.should.endWith('index.js');
+  });
+
+  it('should respect deepFilter with configLoader', async () => {
+    const configs = await createTestConfigs(basePath);
+
+    const filePaths = await configArrayFindFiles({
+      basePath,
+      configLoader: {
+        isDirectoryIgnored: (/** @type {string} */ p) => configs.isDirectoryIgnored(p),
+        getConfig: (/** @type {string} */ p) => configs.getConfig(p),
+      },
+      deepFilter: (entry) => !entry.path.includes('node_modules'),
+    });
+
+    assertExpectedFiles(filePaths);
+  });
+
+  it('should respect entryFilter with configLoader', async () => {
+    const configs = await createTestConfigs(basePath);
+
+    const filePaths = await configArrayFindFiles({
+      basePath,
+      configLoader: {
+        isDirectoryIgnored: (/** @type {string} */ p) => configs.isDirectoryIgnored(p),
+        getConfig: (/** @type {string} */ p) => configs.getConfig(p),
+      },
+      entryFilter: (entry) => entry.path.endsWith('.js'),
+    });
+
+    filePaths.should.have.length(2);
+    filePaths[0]?.should.endWith('eslint.config.js');
+    filePaths[1]?.should.endWith('index.js');
+  });
+
+  it('should throw TypeError when neither configs nor configLoader provided', async () => {
+    try {
+      await configArrayFindFiles({
+        basePath,
+      });
+      throw new Error('should have thrown');
+    } catch (/** @type {any} */ err) {
+      err.should.be.instanceOf(TypeError);
+      err.message.should.include('configs');
+      err.message.should.include('configLoader');
+    }
+  });
+
   it('should propagate configLoader.isDirectoryIgnored errors', async () => {
     const error = new Error('isDirectoryIgnored failed');
 

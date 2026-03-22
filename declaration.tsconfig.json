@@ -1,6 +1,6 @@
 {
   "extends": "./tsconfig",
-  "files": ["lib/async-walk.js"],
+  "files": [],
   "exclude": [
     "test/**/*.js"
   ],

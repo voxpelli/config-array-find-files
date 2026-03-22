@@ -50,7 +50,7 @@
     "prepublishOnly": "run-s build",
     "test:mocha": "c8 node --test 'test/**/*.spec.js'",
     "test-ci": "run-s test:*",
-    "test": "run-s check test:*"
+    "test": "run-s check build test:*"
   },
   "devDependencies": {
     "@eslint/config-array": "^0.23.3",

@@ -42,7 +42,7 @@
     "check:lint": "eslint --report-unused-disable-directives .",
     "check:tsc": "tsc",
     "check:type-coverage": "type-coverage --detail --strict --at-least 99 --ignore-files 'test/*'",
-    "check": "run-p check:*",
+    "check": "run-s clean && run-p check:*",
     "clean:declarations-top": "rm -rf $(find . -maxdepth 1 -type f -name '*.d.ts*')",
     "clean:declarations-lib": "rm -rf $(find lib -type f -name '*.d.ts*' 2>/dev/null || true)",
     "clean": "run-p clean:*",

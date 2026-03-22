@@ -66,7 +66,7 @@ export async function configArrayFindFiles (options) {
     return [];
   }
 
-  const loader = configLoader || configsToLoader(/** @type {ConfigArray} */ (configs));
+  const loader = configLoader ?? configsToLoader(/** @type {ConfigArray} */ (configs));
 
   return asyncWalk({
     basePath,
@@ -86,7 +86,7 @@ export async function configArrayFindFiles (options) {
       return (await loader.getConfig(entry.path)) !== undefined;
     },
     errorFilter,
-    followSymbolicLinks: Boolean(followSymbolicLinks),
+    followSymbolicLinks: followSymbolicLinks ?? false,
     signal,
   });
 }

@@ -1,0 +1,5 @@
+{
+  "all": true,
+  "src": ["index.js", "lib"],
+  "reporter": ["lcov", "text"]
+}

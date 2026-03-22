@@ -1,12 +1,13 @@
 {
-  "extends": "@voxpelli/tsconfig/node18.json",
+  "extends": "@voxpelli/tsconfig/node20.json",
   "files": [
-    "index.js"
+    "index.js",
+    "lib/async-walk.js"
   ],
   "include": [
     "test/**/*",
   ],
   "compilerOptions": {
-    "types": ["node", "mocha"]
+    "types": ["node"]
   }
 }

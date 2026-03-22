@@ -1,35 +1,296 @@
+import { chmod, mkdir, mkdtemp, rm, symlink } from 'node:fs/promises';
+import assert from 'node:assert/strict';
+import os from 'node:os';
 import path from 'node:path';
+import { describe, it } from 'node:test';
 
 import { ConfigArray } from '@eslint/config-array';
-import chai from 'chai';
-import chaiString from 'chai-string';
-import { dirname } from 'desm';
 
-import { configArrayFindFiles } from '../index.js';
+import { asyncWalk, configArrayFindFiles, configsToLoader } from '../index.js';
 
-chai.use(chaiString);
+// eslint-disable-next-line n/no-unsupported-features/node-builtins -- available since Node 20.11.0, our minimum is 20.19.0
+const testDir = import.meta.dirname;
 
-chai.should();
+const CONFIG_VARIANTS = /** @type {const} */ ([
+  ['configs', (/** @type {ConfigArray} */ c) => ({ configs: c })],
+  ['configLoader', (/** @type {ConfigArray} */ c) => ({ configLoader: configsToLoader(c) })],
+]);
+
+/**
+ * @param {string[]} filePaths
+ * @param {number} expected
+ */
+function assertFileCount (filePaths, expected) {
+  assert.equal(filePaths.length, expected, `Expected ${expected} files, got ${filePaths.length}: ${filePaths.map(f => path.basename(f)).join(', ')}`);
+}
+
+/**
+ * @param {string} basePath
+ * @param {string[][]} [patterns]
+ * @returns {Promise<import('@eslint/config-array').ConfigArray>}
+ */
+async function createTestConfigs (basePath, patterns) {
+  const configs = new ConfigArray(
+    (patterns ?? [['**/*.js'], ['**/*.md']]).map(files => ({ files })),
+    { basePath }
+  );
+
+  await configs.normalize();
+
+  return configs;
+}
+
+/**
+ * Creates a temporary directory with a symlink to fixtures/basic/sub, runs the test function, then cleans up.
+ *
+ * @param {import('node:test').TestContext} t
+ * @param {(symlinkFixture: string) => Promise<void>} testFn
+ */
+async function withSymlinkFixture (t, testFn) {
+  const symlinkFixture = await mkdtemp(path.join(os.tmpdir(), 'config-array-find-files-'));
+
+  t.after(() => rm(symlinkFixture, { recursive: true }));
+
+  const created = await symlink(
+    path.join(testDir, 'fixtures/basic/sub'),
+    path.join(symlinkFixture, 'linked-sub')
+  ).then(() => true, () => false);
+
+  if (!created) {
+    t.skip('Symlinks not supported on this platform');
+    return;
+  }
+
+  await testFn(symlinkFixture);
+}
 
 describe('configArrayFindFiles', () => {
-  it('should find files', async () => {
-    const configs = new ConfigArray([
-      { files: ['*.js'] },
-      { files: ['*.md'] },
-    ]);
+  const fixtureBasic = path.join(testDir, 'fixtures/basic');
 
-    await configs.normalize();
+  // -- Core --
+
+  it('should find files in flat directory with configs', async () => {
+    const configs = await createTestConfigs(fixtureBasic, [['*.js'], ['*.md']]);
+
+    const filePaths = await configArrayFindFiles({ basePath: fixtureBasic, configs });
+
+    assertFileCount(filePaths, 2);
+    assert.ok(filePaths[0]?.endsWith('file1.js'));
+    assert.ok(filePaths[1]?.endsWith('file2.md'));
+  });
+
+  for (const [label, toConfigOpts] of CONFIG_VARIANTS) {
+    it(`should find nested files with ${label}`, async () => {
+      const configs = await createTestConfigs(fixtureBasic);
+
+      const filePaths = await configArrayFindFiles({ basePath: fixtureBasic, ...toConfigOpts(configs) });
+
+      assertFileCount(filePaths, 4);
+      assert.ok(filePaths[0]?.endsWith('file1.js'));
+      assert.ok(filePaths[1]?.endsWith('file2.md'));
+      assert.ok(filePaths[2]?.endsWith('deep-nested.md'));
+      assert.ok(filePaths[3]?.endsWith('nested.js'));
+    });
+
+    it(`should respect deepFilter with ${label}`, async () => {
+      const configs = await createTestConfigs(fixtureBasic);
+
+      const filePaths = await configArrayFindFiles({
+        basePath: fixtureBasic,
+        ...toConfigOpts(configs),
+        deepFilter: (entry) => !entry.path.includes('sub'),
+      });
+
+      assertFileCount(filePaths, 2);
+      assert.ok(filePaths[0]?.endsWith('file1.js'));
+      assert.ok(filePaths[1]?.endsWith('file2.md'));
+    });
+
+    it(`should respect entryFilter with ${label}`, async () => {
+      const configs = await createTestConfigs(fixtureBasic);
+
+      const filePaths = await configArrayFindFiles({
+        basePath: fixtureBasic,
+        ...toConfigOpts(configs),
+        entryFilter: (entry) => entry.path.endsWith('.js'),
+      });
+
+      assertFileCount(filePaths, 2);
+      assert.ok(filePaths[0]?.endsWith('file1.js'));
+      assert.ok(filePaths[1]?.endsWith('nested.js'));
+    });
+  }
+
+  // -- Edge cases --
+
+  it('should return empty array for non-existent basePath', async () => {
+    const configs = await createTestConfigs(fixtureBasic);
 
     const filePaths = await configArrayFindFiles({
-      basePath: path.join(dirname(import.meta.url), '../'),
+      basePath: path.join(fixtureBasic, 'non-existent'),
       configs,
     });
 
-    filePaths[0]?.should.endWith('CHANGELOG.md');
-    filePaths[1]?.should.endWith('README.md');
-    filePaths[2]?.should.endWith('eslint.config.js');
-    filePaths[3]?.should.endWith('index.js');
+    assertFileCount(filePaths, 0);
+  });
 
-    filePaths.should.have.length(4);
+  it('should return empty array when basePath is a file', async () => {
+    const configs = await createTestConfigs(fixtureBasic);
+
+    const filePaths = await configArrayFindFiles({
+      basePath: path.join(fixtureBasic, 'file1.js'),
+      configs,
+    });
+
+    assertFileCount(filePaths, 0);
+  });
+
+  it('should throw TypeError when neither configs nor configLoader provided', async () => {
+    await assert.rejects(
+      () => configArrayFindFiles({ basePath: fixtureBasic }),
+      TypeError
+    );
+  });
+
+  it('should propagate configLoader.isDirectoryIgnored errors', async () => {
+    const error = new Error('isDirectoryIgnored failed');
+
+    await assert.rejects(
+      () => configArrayFindFiles({
+        basePath: fixtureBasic,
+        configLoader: {
+          isDirectoryIgnored: () => { throw error; },
+          // eslint-disable-next-line unicorn/no-useless-undefined -- needed to match ConfigLoader type
+          getConfig: () => undefined,
+        },
+      }),
+      error
+    );
+  });
+
+  it('should propagate configLoader.getConfig rejections', async () => {
+    const configs = await createTestConfigs(fixtureBasic);
+    const error = new Error('getConfig failed');
+
+    await assert.rejects(
+      () => configArrayFindFiles({
+        basePath: fixtureBasic,
+        configLoader: {
+          isDirectoryIgnored: (/** @type {string} */ p) => configs.isDirectoryIgnored(p),
+          getConfig: () => Promise.reject(error),
+        },
+      }),
+      error
+    );
+  });
+
+  it('should find files with async configLoader', async () => {
+    const configs = await createTestConfigs(fixtureBasic);
+
+    const filePaths = await configArrayFindFiles({
+      basePath: fixtureBasic,
+      configLoader: {
+        isDirectoryIgnored: async (/** @type {string} */ p) => configs.isDirectoryIgnored(p),
+        getConfig: async (/** @type {string} */ p) => configs.getConfig(p),
+      },
+    });
+
+    assertFileCount(filePaths, 4);
+  });
+
+  // -- Symlinks --
+
+  it('should skip symlinked directories by default', async (t) => {
+    await withSymlinkFixture(t, async (symlinkFixture) => {
+      const configs = await createTestConfigs(symlinkFixture);
+      const filePaths = await configArrayFindFiles({ basePath: symlinkFixture, configs });
+      assertFileCount(filePaths, 0);
+    });
+  });
+
+  for (const [label, toConfigOpts] of CONFIG_VARIANTS) {
+    it(`should follow symlinks with ${label} when followSymbolicLinks is true`, async (t) => {
+      await withSymlinkFixture(t, async (symlinkFixture) => {
+        const configs = await createTestConfigs(symlinkFixture);
+        const filePaths = await configArrayFindFiles({ basePath: symlinkFixture, ...toConfigOpts(configs), followSymbolicLinks: true });
+        assertFileCount(filePaths, 2);
+        assert.ok(filePaths.some(f => f.endsWith('nested.js')));
+        assert.ok(filePaths.some(f => f.endsWith('deep-nested.md')));
+      });
+    });
+  }
+
+  // -- Abort --
+
+  for (const [label, toConfigOpts] of CONFIG_VARIANTS) {
+    it(`should abort traversal with pre-aborted signal (${label})`, async () => {
+      const configs = await createTestConfigs(fixtureBasic);
+      const ac = new AbortController();
+
+      ac.abort();
+
+      await assert.rejects(
+        () => configArrayFindFiles({ basePath: fixtureBasic, ...toConfigOpts(configs), signal: ac.signal }),
+        { name: 'AbortError' }
+      );
+    });
+  }
+
+  // -- Error handling --
+
+  it('should re-throw opendir errors when errorFilter returns false', async () => {
+    await assert.rejects(
+      () => asyncWalk({
+        basePath: path.join(fixtureBasic, 'non-existent'),
+        errorFilter: () => false,
+      }),
+      { code: 'ENOENT' }
+    );
+  });
+
+  it('should accept errorFilter with configs', async () => {
+    const configs = await createTestConfigs(fixtureBasic);
+
+    const filePaths = await configArrayFindFiles({
+      basePath: fixtureBasic,
+      configs,
+      errorFilter: () => true,
+    });
+
+    assert.ok(filePaths.length > 0);
+  });
+
+  it('should skip unreadable directories when errorFilter returns true', async (t) => {
+    // Only works on Unix where chmod is effective
+    const unreadableDir = path.join(testDir, 'fixtures/unreadable-test');
+    const subDir = path.join(unreadableDir, 'blocked');
+
+    // chmod is ineffective on Windows or when running as root
+    if (process.platform === 'win32' || process.getuid?.() === 0) {
+      t.skip('chmod not effective on this platform or user');
+      return;
+    }
+
+    await mkdir(subDir, { recursive: true });
+    t.after(async () => {
+      await chmod(subDir, 0o755).catch(() => {});
+      await rm(unreadableDir, { recursive: true }).catch(() => {});
+    });
+
+    await chmod(subDir, 0o000);
+
+    const configs = await createTestConfigs(unreadableDir);
+    /** @type {NodeJS.ErrnoException[]} */
+    const errors = [];
+
+    const filePaths = await configArrayFindFiles({
+      basePath: unreadableDir,
+      configs,
+      errorFilter: (err) => { errors.push(err); return true; },
+    });
+
+    assertFileCount(filePaths, 0);
+    assert.ok(errors.length > 0, 'errorFilter should have been called');
+    assert.equal(errors[0]?.code, 'EACCES');
   });
 });

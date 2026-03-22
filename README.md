@@ -1,6 +1,6 @@
 # @voxpelli/config-array-find-files
 
-A proof of concept of a generic equivalent of ESLint's [`globSearch()`](https://github.com/eslint/eslint/blob/d2d06f7a70d9b96b125ecf2de8951bea549db4da/lib/eslint/eslint-helpers.js#L217-L382) for use with [`ConfigArray`](https://www.npmjs.com/package/@eslint/config-array)
+A generic equivalent of ESLint's [`globSearch()`](https://github.com/eslint/eslint/blob/d2d06f7a70d9b96b125ecf2de8951bea549db4da/lib/eslint/eslint-helpers.js#L217-L382) for use with [`ConfigArray`](https://www.npmjs.com/package/@eslint/config-array)
 
 [![npm version](https://img.shields.io/npm/v/@voxpelli/config-array-find-files.svg?style=flat)](https://www.npmjs.com/package/@voxpelli/config-array-find-files)
 [![npm downloads](https://img.shields.io/npm/dm/@voxpelli/config-array-find-files.svg?style=flat)](https://www.npmjs.com/package/@voxpelli/config-array-find-files)
@@ -11,23 +11,69 @@ A proof of concept of a generic equivalent of ESLint's [`globSearch()`](https://
 
 ## Usage
 
+### With a ConfigArray
+
 ```javascript
 import { ConfigArray } from '@eslint/config-array';
 import { configArrayFindFiles } from '@voxpelli/config-array-find-files';
 
-// Ensure you have a normalized config at hand...
+const basePath = new URL('.', import.meta.url).pathname;
 
 const configs = new ConfigArray([
-  { files: ['*.js'] },
-  { files: ['*.md'] },
-]);
+  { files: ['**/*.js'] },
+  { files: ['**/*.md'] },
+], { basePath });
+
 await configs.normalize();
 
-// ...then you are ready to find some files!
+const filePaths = await configArrayFindFiles({
+  basePath,
+  configs,
+});
+```
+
+### With a configLoader
+
+For async per-file config resolution (e.g. ESLint 10's monorepo config lookup), use `configLoader` instead of `configs`:
+
+```javascript
+import { configArrayFindFiles } from '@voxpelli/config-array-find-files';
 
 const filePaths = await configArrayFindFiles({
-  basePath: path.join(dirname(import.meta.url), '../'),
+  basePath: '/path/to/project',
+  configLoader: {
+    isDirectoryIgnored: async (dirPath) => {
+      const configs = await loadConfigForDir(dirPath);
+      return configs.isDirectoryIgnored(dirPath);
+    },
+    getConfig: async (filePath) => {
+      const configs = await loadConfigForDir(path.dirname(filePath));
+      return configs.getConfig(filePath);
+    },
+  },
+});
+```
+
+### Cancellable search with AbortSignal
+
+```javascript
+const ac = new AbortController();
+setTimeout(() => ac.abort(), 5000); // 5s timeout
+
+const filePaths = await configArrayFindFiles({
+  basePath,
   configs,
+  signal: ac.signal,
+});
+```
+
+### Following symbolic links
+
+```javascript
+const filePaths = await configArrayFindFiles({
+  basePath,
+  configs,
+  followSymbolicLinks: true,
 });
 ```
 
@@ -35,7 +81,9 @@ const filePaths = await configArrayFindFiles({
 
 ### configArrayFindFiles()
 
-Takes a value (`input`), does something configured by the config (`configParam`) and returns the processed value asyncly(`output`)
+Searches a directory recursively for files that match the provided configuration, using either a `ConfigArray` or a `configLoader` to determine which files to include and which directories to ignore.
+
+Returns an empty array if `basePath` does not exist or is not a directory.
 
 #### Syntax
 
@@ -45,12 +93,56 @@ configArrayFindFiles(options) => Promise<string[]>
 
 #### Options
 
-* `basePath` - the directory to search
-* `configs` - the config array to use for determining what to ignore
-* `deepFilter` - optional function that indicates whether the directory will be read deep or not
-* `entryFilter` - optional function that indicates whether the entry will be included to results or not
+Exactly one of `configs` or `configLoader` must be provided.
+
+* `basePath` — `string` — the directory to search
+* `configs` — `ConfigArray` — a normalized config array to use for determining what to ignore
+* `configLoader` — `ConfigLoader` — an async-capable alternative to `configs` (see below)
+* `deepFilter` — optional function that indicates whether the directory will be read deep or not
+* `entryFilter` — optional function that indicates whether the entry will be included to results or not
+* `errorFilter` — optional function to filter errors during traversal; return `true` to skip the error and continue
+* `followSymbolicLinks` — `boolean` — follow symbolic links when walking directories (default: `false`)
+* `signal` — `AbortSignal` — cancel the traversal; throws `AbortError` when aborted
+
+#### ConfigLoader
+
+An object with methods for config resolution, all of which may return a value or a `Promise`:
+
+* `isDirectoryIgnored(dirPath: string)` — returns `boolean` — whether the directory should be skipped
+* `getConfig(filePath: string)` — returns `object | undefined` — the config for the file, or `undefined` if the file has no matching config
 
 #### Returns
 
-A `Promise` that resolves to an array with `string` file paths for all matching files
+A `Promise` that resolves to an array with `string` file paths for all matching files.
 
+### asyncWalk()
+
+A standalone async directory walker with no config-array dependency. Available as a separate import:
+
+```javascript
+import { asyncWalk } from '@voxpelli/config-array-find-files/walk';
+
+const files = await asyncWalk({
+  basePath: '/path/to/dir',
+  deepFilter: (entry) => !entry.path.includes('node_modules'),
+  entryFilter: (entry) => entry.path.endsWith('.js'),
+});
+```
+
+### configsToLoader()
+
+Wraps a `ConfigArray` as a `ConfigLoader`:
+
+```javascript
+import { configsToLoader } from '@voxpelli/config-array-find-files';
+
+const loader = configsToLoader(configs);
+```
+
+## Types
+
+TypeScript types are available via JSDoc-generated `.d.ts` files:
+
+```typescript
+import type { ConfigLoader, WalkEntry, AsyncWalkOptions } from '@voxpelli/config-array-find-files';
+```

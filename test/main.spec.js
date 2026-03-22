@@ -1,4 +1,4 @@
-import { mkdir, rm, symlink } from 'node:fs/promises';
+import { chmod, mkdir, rm, symlink } from 'node:fs/promises';
 import assert from 'node:assert/strict';
 import path from 'node:path';
 import { describe, it } from 'node:test';
@@ -304,20 +304,6 @@ describe('configArrayFindFiles', () => {
     assert.ok(filePaths.length > 0);
   });
 
-  it('should rethrow when errorFilter rejects', async () => {
-    const configs = await createTestConfigs(path.join(testDir, 'fixtures'));
-
-    try {
-      await configArrayFindFiles({
-        basePath: path.join(testDir, 'fixtures/nonexistent-for-error'),
-        configLoader: configsToLoader(configs),
-        errorFilter: () => false,
-      });
-    } catch {
-      // Expected if the error propagates — basePath guard may return [] first
-    }
-  });
-
   it('should skip unreadable directories when errorFilter returns true', async (t) => {
     // Only works on Unix where chmod is effective
     const unreadableDir = path.join(testDir, 'fixtures/unreadable-test');
@@ -326,8 +312,6 @@ describe('configArrayFindFiles', () => {
     await mkdir(subDir, { recursive: true });
 
     try {
-      const { chmod } = await import('node:fs/promises');
-
       await chmod(subDir, 0o000);
 
       const configs = await createTestConfigs(unreadableDir);

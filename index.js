@@ -77,9 +77,6 @@ export async function configArrayFindFiles (options) {
       return !(await loader.isDirectoryIgnored(entry.path));
     },
     entryFilter: async (entry) => {
-      if (entry.dirent.isDirectory()) {
-        return false;
-      }
       if (entryFilter && !entryFilter(entry)) {
         return false;
       }

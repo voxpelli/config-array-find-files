@@ -1,5 +1,6 @@
-import { chmod, mkdir, rm, symlink } from 'node:fs/promises';
+import { chmod, mkdir, mkdtemp, rm, symlink } from 'node:fs/promises';
 import assert from 'node:assert/strict';
+import os from 'node:os';
 import path from 'node:path';
 import { describe, it } from 'node:test';
 
@@ -46,22 +47,21 @@ async function createTestConfigs (basePath, patterns) {
  * @param {(symlinkFixture: string) => Promise<void>} testFn
  */
 async function withSymlinkFixture (t, testFn) {
-  const symlinkFixture = path.join(testDir, 'fixtures/symlink-test');
+  const symlinkFixture = await mkdtemp(path.join(os.tmpdir(), 'config-array-find-files-'));
 
-  await mkdir(symlinkFixture, { recursive: true });
+  t.after(() => rm(symlinkFixture, { recursive: true }));
 
-  try {
-    await symlink(path.join(testDir, 'fixtures/basic/sub'), path.join(symlinkFixture, 'linked-sub'));
-  } catch {
+  const created = await symlink(
+    path.join(testDir, 'fixtures/basic/sub'),
+    path.join(symlinkFixture, 'linked-sub')
+  ).then(() => true, () => false);
+
+  if (!created) {
     t.skip('Symlinks not supported on this platform');
     return;
   }
 
-  try {
-    await testFn(symlinkFixture);
-  } finally {
-    await rm(symlinkFixture, { recursive: true });
-  }
+  await testFn(symlinkFixture);
 }
 
 describe('configArrayFindFiles', () => {

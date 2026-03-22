@@ -74,88 +74,50 @@ describe('configArrayFindFiles', () => {
     assert.ok(filePaths[1]?.endsWith('file2.md'));
   });
 
-  it('should find nested files with ** glob patterns', async () => {
-    const configs = await createTestConfigs(fixtureBasic);
+  for (const [label, toConfigOpts] of /** @type {const} */ ([
+    ['configs', (/** @type {import('@eslint/config-array').ConfigArray} */ configs) => ({ configs })],
+    ['configLoader', (/** @type {import('@eslint/config-array').ConfigArray} */ configs) => ({ configLoader: configsToLoader(configs) })],
+  ])) {
+    it(`should find nested files with ${label}`, async () => {
+      const configs = await createTestConfigs(fixtureBasic);
 
-    const filePaths = await configArrayFindFiles({ basePath: fixtureBasic, configs });
+      const filePaths = await configArrayFindFiles({ basePath: fixtureBasic, ...toConfigOpts(configs) });
 
-    assertFileCount(filePaths, 4);
-    assert.ok(filePaths[0]?.endsWith('file1.js'));
-    assert.ok(filePaths[1]?.endsWith('file2.md'));
-    assert.ok(filePaths[2]?.endsWith('deep-nested.md'));
-    assert.ok(filePaths[3]?.endsWith('nested.js'));
-  });
-
-  it('should find nested files with configLoader', async () => {
-    const configs = await createTestConfigs(fixtureBasic);
-
-    const filePaths = await configArrayFindFiles({
-      basePath: fixtureBasic,
-      configLoader: configsToLoader(configs),
+      assertFileCount(filePaths, 4);
+      assert.ok(filePaths[0]?.endsWith('file1.js'));
+      assert.ok(filePaths[1]?.endsWith('file2.md'));
+      assert.ok(filePaths[2]?.endsWith('deep-nested.md'));
+      assert.ok(filePaths[3]?.endsWith('nested.js'));
     });
 
-    assertFileCount(filePaths, 4);
-    assert.ok(filePaths[0]?.endsWith('file1.js'));
-    assert.ok(filePaths[1]?.endsWith('file2.md'));
-    assert.ok(filePaths[2]?.endsWith('deep-nested.md'));
-    assert.ok(filePaths[3]?.endsWith('nested.js'));
-  });
+    it(`should respect deepFilter with ${label}`, async () => {
+      const configs = await createTestConfigs(fixtureBasic);
 
-  it('should respect deepFilter to skip subdirectories', async () => {
-    const configs = await createTestConfigs(fixtureBasic);
+      const filePaths = await configArrayFindFiles({
+        basePath: fixtureBasic,
+        ...toConfigOpts(configs),
+        deepFilter: (entry) => !entry.path.includes('sub'),
+      });
 
-    const filePaths = await configArrayFindFiles({
-      basePath: fixtureBasic,
-      configs,
-      deepFilter: (entry) => !entry.path.includes('sub'),
+      assertFileCount(filePaths, 2);
+      assert.ok(filePaths[0]?.endsWith('file1.js'));
+      assert.ok(filePaths[1]?.endsWith('file2.md'));
     });
 
-    assertFileCount(filePaths, 2);
-    assert.ok(filePaths[0]?.endsWith('file1.js'));
-    assert.ok(filePaths[1]?.endsWith('file2.md'));
-  });
+    it(`should respect entryFilter with ${label}`, async () => {
+      const configs = await createTestConfigs(fixtureBasic);
 
-  it('should respect entryFilter with configs', async () => {
-    const configs = await createTestConfigs(fixtureBasic);
+      const filePaths = await configArrayFindFiles({
+        basePath: fixtureBasic,
+        ...toConfigOpts(configs),
+        entryFilter: (entry) => entry.path.endsWith('.js'),
+      });
 
-    const filePaths = await configArrayFindFiles({
-      basePath: fixtureBasic,
-      configs,
-      entryFilter: (entry) => entry.path.endsWith('.js'),
+      assertFileCount(filePaths, 2);
+      assert.ok(filePaths[0]?.endsWith('file1.js'));
+      assert.ok(filePaths[1]?.endsWith('nested.js'));
     });
-
-    assertFileCount(filePaths, 2);
-    assert.ok(filePaths[0]?.endsWith('file1.js'));
-    assert.ok(filePaths[1]?.endsWith('nested.js'));
-  });
-
-  it('should respect deepFilter with configLoader', async () => {
-    const configs = await createTestConfigs(fixtureBasic);
-
-    const filePaths = await configArrayFindFiles({
-      basePath: fixtureBasic,
-      configLoader: configsToLoader(configs),
-      deepFilter: (entry) => !entry.path.includes('sub'),
-    });
-
-    assertFileCount(filePaths, 2);
-    assert.ok(filePaths[0]?.endsWith('file1.js'));
-    assert.ok(filePaths[1]?.endsWith('file2.md'));
-  });
-
-  it('should respect entryFilter with configLoader', async () => {
-    const configs = await createTestConfigs(fixtureBasic);
-
-    const filePaths = await configArrayFindFiles({
-      basePath: fixtureBasic,
-      configLoader: configsToLoader(configs),
-      entryFilter: (entry) => entry.path.endsWith('.js'),
-    });
-
-    assertFileCount(filePaths, 2);
-    assert.ok(filePaths[0]?.endsWith('file1.js'));
-    assert.ok(filePaths[1]?.endsWith('nested.js'));
-  });
+  }
 
   // -- Edge cases --
 
@@ -244,51 +206,39 @@ describe('configArrayFindFiles', () => {
     });
   });
 
-  it('should follow symlinked directories when followSymbolicLinks is true', async (t) => {
-    await withSymlinkFixture(t, async (symlinkFixture) => {
-      const configs = await createTestConfigs(symlinkFixture);
-      const filePaths = await configArrayFindFiles({ basePath: symlinkFixture, configs, followSymbolicLinks: true });
-      assertFileCount(filePaths, 2);
-      assert.ok(filePaths.some(f => f.endsWith('nested.js')));
-      assert.ok(filePaths.some(f => f.endsWith('deep-nested.md')));
+  for (const [label, toConfigOpts] of /** @type {const} */ ([
+    ['configs', (/** @type {import('@eslint/config-array').ConfigArray} */ configs) => ({ configs })],
+    ['configLoader', (/** @type {import('@eslint/config-array').ConfigArray} */ configs) => ({ configLoader: configsToLoader(configs) })],
+  ])) {
+    it(`should follow symlinks with ${label} when followSymbolicLinks is true`, async (t) => {
+      await withSymlinkFixture(t, async (symlinkFixture) => {
+        const configs = await createTestConfigs(symlinkFixture);
+        const filePaths = await configArrayFindFiles({ basePath: symlinkFixture, ...toConfigOpts(configs), followSymbolicLinks: true });
+        assertFileCount(filePaths, 2);
+        assert.ok(filePaths.some(f => f.endsWith('nested.js')));
+        assert.ok(filePaths.some(f => f.endsWith('deep-nested.md')));
+      });
     });
-  });
-
-  it('should follow symlinks with configLoader when followSymbolicLinks is true', async (t) => {
-    await withSymlinkFixture(t, async (symlinkFixture) => {
-      const configs = await createTestConfigs(symlinkFixture);
-      const filePaths = await configArrayFindFiles({ basePath: symlinkFixture, configLoader: configsToLoader(configs), followSymbolicLinks: true });
-      assertFileCount(filePaths, 2);
-      assert.ok(filePaths.some(f => f.endsWith('nested.js')));
-      assert.ok(filePaths.some(f => f.endsWith('deep-nested.md')));
-    });
-  });
+  }
 
   // -- Abort --
 
-  it('should abort traversal with pre-aborted signal (configs)', async () => {
-    const configs = await createTestConfigs(fixtureBasic);
-    const ac = new AbortController();
+  for (const [label, toConfigOpts] of /** @type {const} */ ([
+    ['configs', (/** @type {import('@eslint/config-array').ConfigArray} */ configs) => ({ configs })],
+    ['configLoader', (/** @type {import('@eslint/config-array').ConfigArray} */ configs) => ({ configLoader: configsToLoader(configs) })],
+  ])) {
+    it(`should abort traversal with pre-aborted signal (${label})`, async () => {
+      const configs = await createTestConfigs(fixtureBasic);
+      const ac = new AbortController();
 
-    ac.abort();
+      ac.abort();
 
-    await assert.rejects(
-      () => configArrayFindFiles({ basePath: fixtureBasic, configs, signal: ac.signal }),
-      { name: 'AbortError' }
-    );
-  });
-
-  it('should abort traversal with pre-aborted signal (configLoader)', async () => {
-    const configs = await createTestConfigs(fixtureBasic);
-    const ac = new AbortController();
-
-    ac.abort();
-
-    await assert.rejects(
-      () => configArrayFindFiles({ basePath: fixtureBasic, configLoader: configsToLoader(configs), signal: ac.signal }),
-      { name: 'AbortError' }
-    );
-  });
+      await assert.rejects(
+        () => configArrayFindFiles({ basePath: fixtureBasic, ...toConfigOpts(configs), signal: ac.signal }),
+        { name: 'AbortError' }
+      );
+    });
+  }
 
   // -- Error handling --
 
@@ -331,7 +281,6 @@ describe('configArrayFindFiles', () => {
       // chmod may not work (e.g. running as root, or on Windows)
       t.skip('chmod not effective on this platform');
     } finally {
-      const { chmod } = await import('node:fs/promises');
       await chmod(subDir, 0o755).catch(() => {});
       await rm(unreadableDir, { recursive: true }).catch(() => {});
     }

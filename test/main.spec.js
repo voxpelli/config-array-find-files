@@ -30,7 +30,7 @@ function assertFileCount (filePaths, expected) {
  */
 async function createTestConfigs (basePath, patterns) {
   const configs = new ConfigArray(
-    (patterns || [['**/*.js'], ['**/*.md']]).map(files => ({ files })),
+    (patterns ?? [['**/*.js'], ['**/*.md']]).map(files => ({ files })),
     { basePath }
   );
 
@@ -255,30 +255,32 @@ describe('configArrayFindFiles', () => {
     const unreadableDir = path.join(testDir, 'fixtures/unreadable-test');
     const subDir = path.join(unreadableDir, 'blocked');
 
+    // chmod is ineffective on Windows or when running as root
+    if (process.platform === 'win32' || process.getuid?.() === 0) {
+      t.skip('chmod not effective on this platform or user');
+      return;
+    }
+
     await mkdir(subDir, { recursive: true });
-
-    try {
-      await chmod(subDir, 0o000);
-
-      const configs = await createTestConfigs(unreadableDir);
-      /** @type {NodeJS.ErrnoException[]} */
-      const errors = [];
-
-      const filePaths = await configArrayFindFiles({
-        basePath: unreadableDir,
-        configs,
-        errorFilter: (err) => { errors.push(err); return true; },
-      });
-
-      assertFileCount(filePaths, 0);
-      assert.ok(errors.length > 0, 'errorFilter should have been called');
-      assert.equal(errors[0]?.code, 'EACCES');
-    } catch {
-      // chmod may not work (e.g. running as root, or on Windows)
-      t.skip('chmod not effective on this platform');
-    } finally {
+    t.after(async () => {
       await chmod(subDir, 0o755).catch(() => {});
       await rm(unreadableDir, { recursive: true }).catch(() => {});
-    }
+    });
+
+    await chmod(subDir, 0o000);
+
+    const configs = await createTestConfigs(unreadableDir);
+    /** @type {NodeJS.ErrnoException[]} */
+    const errors = [];
+
+    const filePaths = await configArrayFindFiles({
+      basePath: unreadableDir,
+      configs,
+      errorFilter: (err) => { errors.push(err); return true; },
+    });
+
+    assertFileCount(filePaths, 0);
+    assert.ok(errors.length > 0, 'errorFilter should have been called');
+    assert.equal(errors[0]?.code, 'EACCES');
   });
 });

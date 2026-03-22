@@ -10,6 +10,11 @@ import { configArrayFindFiles, configsToLoader } from '../index.js';
 // eslint-disable-next-line n/no-unsupported-features/node-builtins -- available since Node 20.11.0, our minimum is 20.19.0
 const testDir = import.meta.dirname;
 
+const CONFIG_VARIANTS = /** @type {const} */ ([
+  ['configs', (/** @type {ConfigArray} */ c) => ({ configs: c })],
+  ['configLoader', (/** @type {ConfigArray} */ c) => ({ configLoader: configsToLoader(c) })],
+]);
+
 /**
  * @param {string[]} filePaths
  * @param {number} expected
@@ -74,10 +79,7 @@ describe('configArrayFindFiles', () => {
     assert.ok(filePaths[1]?.endsWith('file2.md'));
   });
 
-  for (const [label, toConfigOpts] of /** @type {const} */ ([
-    ['configs', (/** @type {import('@eslint/config-array').ConfigArray} */ configs) => ({ configs })],
-    ['configLoader', (/** @type {import('@eslint/config-array').ConfigArray} */ configs) => ({ configLoader: configsToLoader(configs) })],
-  ])) {
+  for (const [label, toConfigOpts] of CONFIG_VARIANTS) {
     it(`should find nested files with ${label}`, async () => {
       const configs = await createTestConfigs(fixtureBasic);
 
@@ -206,10 +208,7 @@ describe('configArrayFindFiles', () => {
     });
   });
 
-  for (const [label, toConfigOpts] of /** @type {const} */ ([
-    ['configs', (/** @type {import('@eslint/config-array').ConfigArray} */ configs) => ({ configs })],
-    ['configLoader', (/** @type {import('@eslint/config-array').ConfigArray} */ configs) => ({ configLoader: configsToLoader(configs) })],
-  ])) {
+  for (const [label, toConfigOpts] of CONFIG_VARIANTS) {
     it(`should follow symlinks with ${label} when followSymbolicLinks is true`, async (t) => {
       await withSymlinkFixture(t, async (symlinkFixture) => {
         const configs = await createTestConfigs(symlinkFixture);
@@ -223,10 +222,7 @@ describe('configArrayFindFiles', () => {
 
   // -- Abort --
 
-  for (const [label, toConfigOpts] of /** @type {const} */ ([
-    ['configs', (/** @type {import('@eslint/config-array').ConfigArray} */ configs) => ({ configs })],
-    ['configLoader', (/** @type {import('@eslint/config-array').ConfigArray} */ configs) => ({ configLoader: configsToLoader(configs) })],
-  ])) {
+  for (const [label, toConfigOpts] of CONFIG_VARIANTS) {
     it(`should abort traversal with pre-aborted signal (${label})`, async () => {
       const configs = await createTestConfigs(fixtureBasic);
       const ac = new AbortController();

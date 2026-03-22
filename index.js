@@ -1,7 +1,6 @@
 import { stat } from 'node:fs/promises';
 
 /** @import { ConfigArray } from '@eslint/config-array' */
-/** @import { WalkEntry } from './lib/async-walk.js' */
 
 import { asyncWalk } from './lib/async-walk.js';
 // eslint-disable-next-line unicorn/prefer-export-from -- need local binding for configArrayFindFiles

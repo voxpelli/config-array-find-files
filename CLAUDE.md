@@ -5,9 +5,9 @@ ESLint ConfigArray file-finding utility. ESM, Node.js ^20.19.0 || ^22.13.0 || >=
 ## Testing
 
 - NEVER use `t.plan()` with `node:assert` — it is incompatible
-- Run tests: `npm run test:mocha`
+- Run tests: `npm run test:unit`
 - Full check + build + test: `npm test`
-- After every commit, run `npm run test:mocha` to verify nothing is broken
+- After every commit, run `npm run test:unit` to verify nothing is broken
 - After any commit that changes build configuration or declaration settings, run `npm test` (full suite including build) before proceeding
 
 ## Code Editing Rules

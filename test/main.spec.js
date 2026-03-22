@@ -6,7 +6,7 @@ import { describe, it } from 'node:test';
 
 import { ConfigArray } from '@eslint/config-array';
 
-import { configArrayFindFiles, configsToLoader } from '../index.js';
+import { asyncWalk, configArrayFindFiles, configsToLoader } from '../index.js';
 
 // eslint-disable-next-line n/no-unsupported-features/node-builtins -- available since Node 20.11.0, our minimum is 20.19.0
 const testDir = import.meta.dirname;
@@ -237,6 +237,16 @@ describe('configArrayFindFiles', () => {
   }
 
   // -- Error handling --
+
+  it('should re-throw opendir errors when errorFilter returns false', async () => {
+    await assert.rejects(
+      () => asyncWalk({
+        basePath: path.join(fixtureBasic, 'non-existent'),
+        errorFilter: () => false,
+      }),
+      { code: 'ENOENT' }
+    );
+  });
 
   it('should accept errorFilter with configs', async () => {
     const configs = await createTestConfigs(fixtureBasic);

@@ -60,7 +60,10 @@ export async function configArrayFindFiles (options) {
   }
 
   // eslint-disable-next-line security/detect-non-literal-fs-filename -- basePath is caller-provided
-  const baseStat = await stat(basePath).catch(() => {});
+  const baseStat = await stat(basePath).catch(/** @param {NodeJS.ErrnoException} err */ (err) => {
+    if (err.code === 'ENOENT' || err.code === 'ENOTDIR') return;
+    throw err;
+  });
 
   if (!baseStat?.isDirectory()) {
     return [];

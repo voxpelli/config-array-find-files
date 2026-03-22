@@ -23,8 +23,8 @@ export { asyncWalk };
  */
 export function configsToLoader (configs) {
   return {
-    isDirectoryIgnored: (/** @type {string} */ p) => configs.isDirectoryIgnored(p),
-    getConfig: (/** @type {string} */ p) => configs.getConfig(p),
+    isDirectoryIgnored: configs.isDirectoryIgnored.bind(configs),
+    getConfig: configs.getConfig.bind(configs),
   };
 }
 

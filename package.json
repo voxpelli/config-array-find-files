@@ -34,8 +34,8 @@
     "lib/**/*.d.ts.map"
   ],
   "scripts": {
-    "build:0": "run-s clean",
-    "build:1-declaration": "tsc -p declaration.tsconfig.json",
+    "build:clean": "run-s clean",
+    "build:declarations": "tsc -p declaration.tsconfig.json",
     "build": "run-s build:*",
     "check:installed-check": "installed-check",
     "check:knip": "knip",
